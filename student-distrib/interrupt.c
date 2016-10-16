@@ -1,10 +1,36 @@
 #include "interrupt.h"
 #include "lib.h"
+#include "keyboard.h"
+#include "i8259.h"
+#include "x86_desc.h"
 
-void interrupt_handler(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
+void install_interrupt_handler(uint8_t interrupt_num, void *handler, uint8_t seg_selector, uint8_t dpl) {
+	idt_desc_t exception_handle_desc;
+	SET_IDT_ENTRY(exception_handle_desc, handler);
+	exception_handle_desc.present = 1;
+	exception_handle_desc.dpl = dpl;
+	exception_handle_desc.reserved0 = 0;
+
+	// 32-bit 80386 interrupt gate
+	exception_handle_desc.size = 1;
+	exception_handle_desc.reserved1 = 1;
+	exception_handle_desc.reserved2 = 1;
+	exception_handle_desc.reserved3 = 0;
+
+	exception_handle_desc.reserved4 = 0;
+
+	// Kernel code segment
+	exception_handle_desc.seg_selector = seg_selector;
+
+	idt[interrupt_num] = exception_handle_desc;
+}
+
+void exception_handler(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
 	uint32_t esi, uint32_t edi, uint32_t esp, uint32_t ebp,
-	uint32_t error, uint32_t int_num,
+	uint32_t int_num, uint32_t error,
 	uint32_t eip, uint32_t cs, uint32_t eflags) {
+
+	// TODO: check if the values of these registers are actually correct
 
 	clear();
 	printf("---------------------------AN EXCEPTION HAS OCCURRED-----------------------------\n\n");
@@ -16,5 +42,37 @@ void interrupt_handler(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
 	printf(" esi: 0x%#x    edi:    0x%#x\n", esi, edi);
 	printf("\n");
 	printf(" eip: 0x%#x    eflags: 0x%#x\n", eip, eflags);
-	asm volatile(".1: hlt; jmp .1;");
+}
+
+void keyboard_handler() {
+	// Acknowledge interrupt
+	send_eoi(KEYBOARD_IRQ);
+
+	uint8_t status;
+	do {
+		// Check keyboard status
+		status = (uint8_t) inb(KEYBOARD_STATUS_PORT);
+
+		// If this bit is set, data is available
+		if(status & 0x01) {
+			int8_t keycode = (int8_t) inb(KEYBOARD_DATA_PORT);
+			if(keycode < 0) {
+				// Key released
+				keyboard_state[keycode & KEYCODE_MASK] = 0;
+			} else {
+				// Key pressed
+				keyboard_state[keycode & KEYCODE_MASK] = 1;
+			}
+
+			// Update pressed keys, output key if it's printable
+			uint8_t ch = keyboard_map[(int) keycode];
+			if(ch > 0) {
+				putc(ch);
+			}
+		}
+	} while (status & 0x01);
+}
+
+void rtc_handler() {
+	test_interrupts();
 }

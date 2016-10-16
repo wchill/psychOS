@@ -8,6 +8,9 @@
 #include "i8259.h"
 #include "debug.h"
 #include "interrupt.h"
+#include "syscall.h"
+#include "keyboard.h"
+#include "rtc.h"
 
 /* Macros. */
 /* Check if the bit BIT in FLAGS is set. */
@@ -150,6 +153,10 @@ entry (unsigned long magic, unsigned long addr)
 		void (*handlers[32]) (void);
 		int i;
 
+		for(i = 0; i < 256; i++) {
+			install_interrupt_handler(i, null_interrupt_handler, KERNEL_CS, PRIVILEGE_KERNEL);
+		}
+
 		lidt(idt_desc_ptr);
 		handlers[0] = interrupt_handler_0;
 		handlers[1] = interrupt_handler_1;
@@ -185,49 +192,50 @@ entry (unsigned long magic, unsigned long addr)
 		handlers[31] = interrupt_handler_31;
 
 		for(i = 0; i < 32; i++) {
-			idt_desc_t exception_handle_desc;
-			SET_IDT_ENTRY(exception_handle_desc, handlers[i]);
-			exception_handle_desc.present = 1;
-			exception_handle_desc.dpl = 0;
-			exception_handle_desc.reserved0 = 0;
-
-			// Kernel code segment
-			exception_handle_desc.seg_selector = KERNEL_CS;
-
-			// 32-bit 80386 interrupt gate
-			exception_handle_desc.size = 1;
-			exception_handle_desc.reserved1 = 1;
-			exception_handle_desc.reserved2 = 1;
-			exception_handle_desc.reserved3 = 0;
-
-			exception_handle_desc.reserved4 = 0;
-
-			idt[i] = exception_handle_desc;
+			install_interrupt_handler(i, handlers[i], KERNEL_CS, PRIVILEGE_KERNEL);
 		}
+
+		// Handle syscalls
+		install_interrupt_handler(0x80, syscall_handler_wrapper, KERNEL_CS, PRIVILEGE_USER);
+
+		// Handle keyboard and RTC
+		install_interrupt_handler(0x21, keyboard_handler_wrapper, KERNEL_CS, PRIVILEGE_KERNEL);
+		install_interrupt_handler(0x28, rtc_handler_wrapper, KERNEL_CS, PRIVILEGE_KERNEL);
 	}
 
-	clear();
 	printf("Initializing the PIC\n");
 
 	/* Init the PIC */
 	i8259_init();
 
-	printf("Testing exception handler\n");
-	asm volatile("movl $0, %eax; divl %eax;");
+	// Uncomment below to cause divide-by-zero exception
+	// asm volatile("movl $0, %eax; divl %eax;");
 
 	/* Initialize devices, memory, filesystem, enable device interrupts on the
 	 * PIC, any other initialization stuff... */
+
+	// Shouldn't need to do any keyboard initialization other than enabling IRQ, but just in case:
+	// http://wiki.osdev.org/%228042%22_PS/2_Controller#Initialising_the_PS.2F2_Controller
+	enable_irq(KEYBOARD_IRQ);
+	
+	// Need to initialize RTC before enabling IRQ
+	// See https://courses.engr.illinois.edu/ece391/secure/references/mc146818.pdf
+	// http://wiki.osdev.org/RTC#Programming_the_RTC
+	// https://piazza.com/class/iqsg6pdvods1rw?cid=596
+	// enable_irq(RTC_IRQ);
 
 	/* Enable interrupts */
 	/* Do not enable the following until after you have set up your
 	 * IDT correctly otherwise QEMU will triple fault and simple close
 	 * without showing you any output */
-	/*printf("Enabling Interrupts\n");
-	sti();*/
+	printf("Enabling Interrupts\n");
+	sti();
 
 	/* Execute the first program (`shell') ... */
 
 	/* Spin (nicely, so we don't chew up cycles) */
-	asm volatile(".1: hlt; jmp .1;");
+	for(;;) {
+    	asm("hlt");
+ 	}
 }
 

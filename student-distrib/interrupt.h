@@ -3,10 +3,18 @@
 
 #include "types.h"
 
-void interrupt_handler(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
+void install_interrupt_handler(uint8_t interrupt_num, void *handler, uint8_t seg_selector, uint8_t dpl);
+
+void keyboard_handler();
+
+void rtc_handler();
+
+void exception_handler(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
 	uint32_t esi, uint32_t edi, uint32_t esp, uint32_t ebp,
 	uint32_t int_num, uint32_t error,
 	uint32_t eip, uint32_t cs, uint32_t eflags);
+
+extern void null_interrupt_handler(void);
 
 extern void interrupt_handler_0(void);
 extern void interrupt_handler_1(void);
@@ -40,5 +48,9 @@ extern void interrupt_handler_28(void);
 extern void interrupt_handler_29(void);
 extern void interrupt_handler_30(void);
 extern void interrupt_handler_31(void);
+
+extern void keyboard_handler_wrapper(void);
+extern void rtc_handler_wrapper(void);
+extern void syscall_handler_wrapper(void);
 
 #endif

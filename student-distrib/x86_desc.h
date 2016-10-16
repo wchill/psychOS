@@ -22,6 +22,10 @@
 /* Number of vectors in the interrupt descriptor table (IDT) */
 #define NUM_VEC 256
 
+/* Privilege levels */
+#define PRIVILEGE_KERNEL 0
+#define PRIVILEGE_USER 3
+
 #ifndef ASM
 
 /* This structure is used to load descriptor base registers
