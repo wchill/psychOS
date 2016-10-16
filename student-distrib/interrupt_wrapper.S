@@ -2,25 +2,25 @@
 common_isr_wrapper:
 	# Push all general purpose registers (4x8 = 32 bytes)
 	# Order of values goes like this (high -> low):
-	# eflags, cs, eip, int num, error, eax, ebx, ..., ebp
-	push %eax
-	push %ebx
-	push %ecx
-	push %edx
-	push %esi
-	push %edi
-	push %esp
+	# eflags, cs, eip, error, int num, ebp, esp, ..., eax
 	push %ebp
+	push %esp
+	push %edi
+	push %esi
+	push %edx
+	push %ecx
+	push %ebx
+	push %eax
 	cld
 	call interrupt_handler
-	pop %ebp
-	pop %esp
-	pop %edi
-	pop %esi
-	pop %edx
-	pop %ecx
-	pop %ebx
 	pop %eax
+	pop %ebx
+	pop %ecx
+	pop %edx
+	pop %esi
+	pop %edi
+	pop %esp
+	pop %ebp
 	add $8, %esp
 	iret
 
