@@ -191,8 +191,8 @@ entry (unsigned long magic, unsigned long addr)
 			exception_handle_desc.dpl = 0;
 			exception_handle_desc.reserved0 = 0;
 
-			// Kernel code segment pointer (index 2 in GDT);
-			exception_handle_desc.seg_selector = 2;
+			// Kernel code segment
+			exception_handle_desc.seg_selector = KERNEL_CS;
 
 			// 32-bit 80386 interrupt gate
 			exception_handle_desc.size = 1;
@@ -211,8 +211,6 @@ entry (unsigned long magic, unsigned long addr)
 
 	/* Init the PIC */
 	i8259_init();
-
-	printf("Shit's working yo\n");
 
 	printf("Testing exception handler\n");
 	asm volatile("movl $0, %eax; divl %eax;");

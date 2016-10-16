@@ -1,6 +1,8 @@
 .align 4
 common_isr_wrapper:
 	# Push all general purpose registers (4x8 = 32 bytes)
+	# Order of values goes like this (high -> low):
+	# eflags, cs, eip, int num, error, eax, ebx, ..., ebp
 	push %eax
 	push %ebx
 	push %ecx
@@ -10,12 +12,7 @@ common_isr_wrapper:
 	push %esp
 	push %ebp
 	cld
-	mov 36(%esp), %eax
-	mov 32(%esp), %ebx
-	push %eax
-	push %ebx
 	call interrupt_handler
-	add $8, %esp
 	pop %ebp
 	pop %esp
 	pop %edi

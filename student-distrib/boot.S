@@ -13,7 +13,9 @@
 	.long MULTIBOOT_HEADER_FLAGS
 	.long -(MULTIBOOT_HEADER_MAGIC+MULTIBOOT_HEADER_FLAGS)
 
+# GDTR has two parts: 16-bit size and 32-bit address to table
 gdtr:
+gdtr_size:
 	.word 0
 gdtr_ptr:
 	.long 0
@@ -30,10 +32,15 @@ _start:
 
 continue:
 	# Load the GDT
+	# Load the size of the GDT
 	movl 	$gdt_size, %ecx
-	movw 	%cx, gdtr
-	leal 	gdt_ptr - 16, %ecx
+	movw 	%cx, gdtr_size
+
+	# Load the address of the GDT
+	leal 	gdt, %ecx
 	movl 	%ecx, gdtr_ptr
+
+	# Set the GDT register (48-bit)
 	lgdt	gdtr
 
 	# Load CS with the new descriptor value
