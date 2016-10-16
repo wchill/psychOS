@@ -13,6 +13,11 @@
 	.long MULTIBOOT_HEADER_FLAGS
 	.long -(MULTIBOOT_HEADER_MAGIC+MULTIBOOT_HEADER_FLAGS)
 
+gdtr:
+	.word 0
+gdtr_ptr:
+	.long 0
+
 # Entrypoint to the kernel
 .globl  start, _start
 
@@ -25,6 +30,11 @@ _start:
 
 continue:
 	# Load the GDT
+	movl 	$gdt_size, %ecx
+	movw 	%cx, gdtr
+	leal 	gdt_ptr - 16, %ecx
+	movl 	%ecx, gdtr_ptr
+	lgdt	gdtr
 
 	# Load CS with the new descriptor value
 	ljmp    $KERNEL_CS, $keep_going

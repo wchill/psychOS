@@ -9,11 +9,13 @@
 .globl  ldt_size, tss_size
 .globl  gdt_desc, ldt_desc, tss_desc
 .globl  tss, tss_desc_ptr, ldt, ldt_desc_ptr
-.globl  gdt_ptr
+.globl  gdt_ptr, gdt_size
 .globl  idt_desc_ptr, idt
 
 .align 4
 
+gdt_size:
+	.long gdt_bottom - gdt - 1
 
 tss_size:
 	.long tss_bottom - tss - 1
