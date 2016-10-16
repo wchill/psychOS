@@ -7,6 +7,7 @@
 #include "lib.h"
 #include "i8259.h"
 #include "debug.h"
+#include "interrupt.h"
 
 /* Macros. */
 /* Check if the bit BIT in FLAGS is set. */
@@ -144,8 +145,77 @@ entry (unsigned long magic, unsigned long addr)
 		ltr(KERNEL_TSS);
 	}
 
+	/* Set up the IDT */
+	{
+		void (*handlers[32]) (void);
+		int i;
+
+		lidt(idt_desc_ptr);
+		handlers[0] = interrupt_handler_0;
+		handlers[1] = interrupt_handler_1;
+		handlers[2] = interrupt_handler_2;
+		handlers[3] = interrupt_handler_3;
+		handlers[4] = interrupt_handler_4;
+		handlers[5] = interrupt_handler_5;
+		handlers[6] = interrupt_handler_6;
+		handlers[7] = interrupt_handler_7;
+		handlers[8] = interrupt_handler_8;
+		handlers[9] = interrupt_handler_9;
+		handlers[10] = interrupt_handler_10;
+		handlers[11] = interrupt_handler_11;
+		handlers[12] = interrupt_handler_12;
+		handlers[13] = interrupt_handler_13;
+		handlers[14] = interrupt_handler_14;
+		handlers[15] = interrupt_handler_15;
+		handlers[16] = interrupt_handler_16;
+		handlers[17] = interrupt_handler_17;
+		handlers[18] = interrupt_handler_18;
+		handlers[19] = interrupt_handler_19;
+		handlers[20] = interrupt_handler_20;
+		handlers[21] = interrupt_handler_21;
+		handlers[22] = interrupt_handler_22;
+		handlers[23] = interrupt_handler_23;
+		handlers[24] = interrupt_handler_24;
+		handlers[25] = interrupt_handler_25;
+		handlers[26] = interrupt_handler_26;
+		handlers[27] = interrupt_handler_27;
+		handlers[28] = interrupt_handler_28;
+		handlers[29] = interrupt_handler_29;
+		handlers[30] = interrupt_handler_30;
+		handlers[31] = interrupt_handler_31;
+
+		for(i = 0; i < 32; i++) {
+			idt_desc_t exception_handle_desc;
+			SET_IDT_ENTRY(exception_handle_desc, handlers[i]);
+			exception_handle_desc.present = 1;
+			exception_handle_desc.dpl = 0;
+			exception_handle_desc.reserved0 = 0;
+
+			// Kernel code segment pointer (index 2 in GDT);
+			exception_handle_desc.seg_selector = 2;
+
+			// 32-bit 80386 interrupt gate
+			exception_handle_desc.size = 1;
+			exception_handle_desc.reserved1 = 1;
+			exception_handle_desc.reserved2 = 1;
+			exception_handle_desc.reserved3 = 0;
+
+			exception_handle_desc.reserved4 = 0;
+
+			idt[i] = exception_handle_desc;
+		}
+	}
+
+	clear();
+	printf("Initializing the PIC\n");
+
 	/* Init the PIC */
 	i8259_init();
+
+	printf("Shit's working yo\n");
+
+	printf("Testing exception handler\n");
+	asm volatile("movl $0, %eax; divl %eax;");
 
 	/* Initialize devices, memory, filesystem, enable device interrupts on the
 	 * PIC, any other initialization stuff... */

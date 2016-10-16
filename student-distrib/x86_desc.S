@@ -9,7 +9,7 @@
 .globl  ldt_size, tss_size
 .globl  gdt_desc, ldt_desc, tss_desc
 .globl  tss, tss_desc_ptr, ldt, ldt_desc_ptr
-.globl  gdt_ptr, gdt_size
+.globl  gdt_ptr, gdt_size, gdt
 .globl  idt_desc_ptr, idt
 
 .align 4
@@ -64,15 +64,19 @@ _gdt:
 	# |----------------------------------------------------------------------|
 	
 gdt_ptr:
+gdt_kernel_cs_ptr:
 	# Set up an entry for kernel CS
 	.quad 0x00CF9A000000FFFF
 
+gdt_kernel_ds_ptr:
 	# Set up an entry for kernel DS
 	.quad 0x00CF92000000FFFF
 
+gdt_user_cs_ptr:
 	# Set up an entry for user CS
 	.quad 0x00CFFA000000FFFF
 
+gdt_user_ds_ptr:
 	# Set up an entry for user DS
 	.quad 0x00CFF2000000FFFF
 

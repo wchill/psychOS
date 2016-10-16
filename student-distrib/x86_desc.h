@@ -118,6 +118,8 @@ extern uint16_t ldt_desc;
 extern uint32_t ldt_size;
 extern seg_desc_t ldt_desc_ptr;
 extern seg_desc_t gdt_ptr;
+extern seg_desc_t gdt;
+extern uint32_t gdt_size;
 extern uint32_t ldt;
 
 extern uint32_t tss_size;
