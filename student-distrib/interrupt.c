@@ -1,7 +1,5 @@
 #include "interrupt.h"
 #include "lib.h"
-#include "keyboard.h"
-#include "i8259.h"
 #include "x86_desc.h"
 
 void install_interrupt_handler(uint8_t interrupt_num, void *handler, uint8_t seg_selector, uint8_t dpl) {
@@ -42,37 +40,4 @@ void exception_handler(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
 	printf(" esi: 0x%#x    edi:    0x%#x\n", esi, edi);
 	printf("\n");
 	printf(" eip: 0x%#x    eflags: 0x%#x\n", eip, eflags);
-}
-
-void keyboard_handler() {
-	// Acknowledge interrupt
-	send_eoi(KEYBOARD_IRQ);
-
-	uint8_t status;
-	do {
-		// Check keyboard status
-		status = (uint8_t) inb(KEYBOARD_STATUS_PORT);
-
-		// If this bit is set, data is available
-		if(status & 0x01) {
-			int8_t keycode = (int8_t) inb(KEYBOARD_DATA_PORT);
-			if(keycode < 0) {
-				// Key released
-				keyboard_state[keycode & KEYCODE_MASK] = 0;
-			} else {
-				// Key pressed
-				keyboard_state[keycode & KEYCODE_MASK] = 1;
-			}
-
-			// Update pressed keys, output key if it's printable
-			uint8_t ch = keyboard_map[(int) keycode];
-			if(ch > 0) {
-				putc(ch);
-			}
-		}
-	} while (status & 0x01);
-}
-
-void rtc_handler() {
-	test_interrupts();
 }

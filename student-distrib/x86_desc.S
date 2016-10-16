@@ -64,19 +64,15 @@ _gdt:
 	# |----------------------------------------------------------------------|
 	
 gdt_ptr:
-gdt_kernel_cs_ptr:
 	# Set up an entry for kernel CS
 	.quad 0x00CF9A000000FFFF
 
-gdt_kernel_ds_ptr:
 	# Set up an entry for kernel DS
 	.quad 0x00CF92000000FFFF
 
-gdt_user_cs_ptr:
 	# Set up an entry for user CS
 	.quad 0x00CFFA000000FFFF
 
-gdt_user_ds_ptr:
 	# Set up an entry for user DS
 	.quad 0x00CFF2000000FFFF
 

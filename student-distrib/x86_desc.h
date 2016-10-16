@@ -21,6 +21,7 @@
 
 /* Number of vectors in the interrupt descriptor table (IDT) */
 #define NUM_VEC 256
+#define NUM_RESERVED_VEC 32
 
 /* Privilege levels */
 #define PRIVILEGE_KERNEL 0

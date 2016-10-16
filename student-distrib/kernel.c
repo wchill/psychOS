@@ -7,9 +7,9 @@
 #include "lib.h"
 #include "i8259.h"
 #include "debug.h"
+#include "keyboard.h"
 #include "interrupt.h"
 #include "syscall.h"
-#include "keyboard.h"
 #include "rtc.h"
 
 /* Macros. */
@@ -150,10 +150,10 @@ entry (unsigned long magic, unsigned long addr)
 
 	/* Set up the IDT */
 	{
-		void (*handlers[32]) (void);
+		void (*handlers[NUM_RESERVED_VEC]) (void);
 		int i;
 
-		for(i = 0; i < 256; i++) {
+		for(i = 0; i < NUM_VEC; i++) {
 			install_interrupt_handler(i, null_interrupt_handler, KERNEL_CS, PRIVILEGE_KERNEL);
 		}
 
@@ -191,16 +191,12 @@ entry (unsigned long magic, unsigned long addr)
 		handlers[30] = interrupt_handler_30;
 		handlers[31] = interrupt_handler_31;
 
-		for(i = 0; i < 32; i++) {
+		for(i = 0; i < NUM_RESERVED_VEC; i++) {
 			install_interrupt_handler(i, handlers[i], KERNEL_CS, PRIVILEGE_KERNEL);
 		}
 
 		// Handle syscalls
-		install_interrupt_handler(0x80, syscall_handler_wrapper, KERNEL_CS, PRIVILEGE_USER);
-
-		// Handle keyboard and RTC
-		install_interrupt_handler(0x21, keyboard_handler_wrapper, KERNEL_CS, PRIVILEGE_KERNEL);
-		install_interrupt_handler(0x28, rtc_handler_wrapper, KERNEL_CS, PRIVILEGE_KERNEL);
+		install_interrupt_handler(SYSCALL_INT, syscall_handler_wrapper, KERNEL_CS, PRIVILEGE_USER);
 	}
 
 	printf("Initializing the PIC\n");
@@ -216,13 +212,33 @@ entry (unsigned long magic, unsigned long addr)
 
 	// Shouldn't need to do any keyboard initialization other than enabling IRQ, but just in case:
 	// http://wiki.osdev.org/%228042%22_PS/2_Controller#Initialising_the_PS.2F2_Controller
-	enable_irq(KEYBOARD_IRQ);
+	{
+		install_interrupt_handler(IRQ_INT_NUM(KEYBOARD_IRQ), keyboard_handler_wrapper, KERNEL_CS, PRIVILEGE_KERNEL);
+		enable_irq(KEYBOARD_IRQ);
+	}
 	
 	// Need to initialize RTC before enabling IRQ
 	// See https://courses.engr.illinois.edu/ece391/secure/references/mc146818.pdf
 	// http://wiki.osdev.org/RTC#Programming_the_RTC
 	// https://piazza.com/class/iqsg6pdvods1rw?cid=596
-	// enable_irq(RTC_IRQ);
+	{
+		char prev;
+
+		outb(RTC_DISABLE_NMI | RTC_REG_B, RTC_STATUS_PORT);     // select register B, and disable NMI
+		prev = inb(RTC_DATA_PORT);								// read the current value of register B
+		outb(RTC_DISABLE_NMI | RTC_REG_B, RTC_STATUS_PORT);		// set the index again (a read will reset the index to register D)
+		outb(prev | 0x40, RTC_DATA_PORT);						// write the previous value ORed with 0x40. This turns on bit 6 of register B
+
+		// 2Hz interrupt rate
+		uint8_t rate = 15;
+		outb(RTC_DISABLE_NMI | RTC_REG_A, RTC_STATUS_PORT);
+		prev=inb(RTC_DATA_PORT);								// get initial value of register A
+		outb(RTC_DISABLE_NMI | RTC_REG_A, RTC_STATUS_PORT);		// reset index to A
+		outb((prev & 0xF0) | rate, RTC_DATA_PORT);				//write only our rate to A. Note, rate is the bottom 4 bits.
+
+		install_interrupt_handler(IRQ_INT_NUM(RTC_IRQ), rtc_handler_wrapper, KERNEL_CS, PRIVILEGE_KERNEL);
+		enable_irq(RTC_IRQ);
+	}
 
 	/* Enable interrupts */
 	/* Do not enable the following until after you have set up your
