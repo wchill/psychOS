@@ -16,6 +16,119 @@
 /* Check if the bit BIT in FLAGS is set. */
 #define CHECK_FLAG(flags,bit)   ((flags) & (1 << (bit)))
 
+// Taken from lib.c
+#define VIDEO 0xB8000
+
+typedef struct pd_entry {
+	union {
+		uint32_t val;
+		struct {
+			uint32_t page_table_addr_31_to_12 : 20;
+			uint32_t reserved : 3;
+			uint32_t global_ignored : 1;
+			uint32_t page_size : 1;
+			uint32_t dirty_ignored : 1;
+			uint32_t accessed : 1;
+			uint32_t cache_disabled : 1;
+			uint32_t write_through : 1;
+			uint32_t user_accessible : 1;
+			uint32_t read_write : 1;
+			uint32_t present : 1;
+		} __attribute__((packed)) ;
+	};
+} pd_entry;
+
+typedef struct __attribute__((packed)) pt_entry {
+	union {
+		uint32_t val;
+		struct {
+			uint32_t physical_addr_31_to_12 : 20;
+			uint32_t reserved : 3;
+			uint32_t global : 1;
+			uint32_t page_size_ignored : 1;
+			uint32_t dirty : 1;
+			uint32_t accessed : 1;
+			uint32_t cache_disabled : 1;
+			uint32_t write_through : 1;
+			uint32_t user_accessible : 1;
+			uint32_t read_write : 1;
+			uint32_t present : 1;
+		} __attribute__((packed)) ;
+	};
+} pt_entry;
+
+static pd_entry paging_directory[1024];
+static pt_entry video_mem_page_table[1024];
+
+extern void enable_paging(pd_entry *table_ptr);
+
+void initialize_paging() {
+	{
+		pd_entry video_mem_entry;
+		int i;
+
+		video_mem_entry.page_table_addr_31_to_12 = (uint32_t) &video_mem_page_table[0];
+		video_mem_entry.global_ignored = 0;
+		video_mem_entry.page_size = 0;
+		video_mem_entry.dirty_ignored = 0;
+		video_mem_entry.accessed = 0;
+		video_mem_entry.cache_disabled = 0;
+		video_mem_entry.write_through = 0;
+		video_mem_entry.user_accessible = 0;
+		video_mem_entry.read_write = 1;
+		video_mem_entry.present = 1;
+		paging_directory[0] = video_mem_entry;
+
+		for(i = 0; i < 1024; i++) {
+			uint32_t addr = 0x1000 * i;
+			pt_entry my_entry;
+
+			if(addr != VIDEO) {
+				my_entry.present = 0;
+			} else {
+				my_entry.physical_addr_31_to_12 = (uint32_t) VIDEO >> 12;
+				my_entry.global = 1;
+				my_entry.page_size_ignored = 0;
+				my_entry.dirty = 0;
+				my_entry.accessed = 0;
+				my_entry.cache_disabled = 1;
+				my_entry.write_through = 0;
+				my_entry.user_accessible = 0;
+				my_entry.read_write = 1;
+				my_entry.present = 1;
+			}
+			video_mem_page_table[i] = my_entry;
+		}
+	}
+
+	{
+		pd_entry kernel_page_entry;
+
+		kernel_page_entry.page_table_addr_31_to_12 = 4194304 >> 12; // address 4MB
+		kernel_page_entry.global_ignored = 0;
+		kernel_page_entry.page_size = 1;
+		kernel_page_entry.dirty_ignored = 0;
+		kernel_page_entry.accessed = 0;
+		kernel_page_entry.cache_disabled = 0;
+		kernel_page_entry.write_through = 0;
+		kernel_page_entry.user_accessible = 0;
+		kernel_page_entry.read_write = 1;
+		kernel_page_entry.present = 1;
+		paging_directory[1] = kernel_page_entry;
+	}
+	
+	{
+		int i;
+		for(i = 2; i < 1024; i++) {
+			pd_entry blank;
+			blank.present = 0;
+			paging_directory[i] = blank;
+		}
+	}
+
+	enable_paging(&paging_directory[0]);
+}
+
 /* Check if MAGIC is valid and print the Multiboot information structure
    pointed by ADDR. */
 void
@@ -203,7 +316,6 @@ entry (unsigned long magic, unsigned long addr)
 
 	/* Init the PIC */
 	i8259_init();
-	enable_irq(SLAVE_8259_IRQ);
 
 	// Uncomment below to cause divide-by-zero exception
 	//asm volatile("movl $0, %eax; divl %eax;");
@@ -240,6 +352,9 @@ entry (unsigned long magic, unsigned long addr)
 		install_interrupt_handler(IRQ_INT_NUM(RTC_IRQ), rtc_handler_wrapper, KERNEL_CS, PRIVILEGE_KERNEL);
 		enable_irq(RTC_IRQ);
 	}
+
+	printf("Initializing Paging\n");
+	initialize_paging();
 
 	/* Enable interrupts */
 	/* Do not enable the following until after you have set up your

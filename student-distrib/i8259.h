@@ -8,14 +8,17 @@
 
 #include "types.h"
 
-/* Ports that each PIC sits on */
+/* Rodney added ports that each PIC sits on */
 #define MASTER_8259_PORT_COMMAND 0x20
 #define MASTER_8259_PORT_DATA    0x21
  
 #define SLAVE_8259_PORT_COMMAND  0xA0
 #define SLAVE_8259_PORT_DATA     0xA1
 
-#define SLAVE_8259_IRQ 			 2
+/* Rodney added constants */
+#define SLAVE_BIT            8
+#define IRQ_MASTER_OFFSET    8
+#define EIGHT_BIT_MASK    0xFF
 
 /* Initialization control words to init each PIC.
  * See the Intel manuals for details on the meaning
@@ -30,18 +33,7 @@
 /* End-of-interrupt byte.  This gets OR'd with
  * the interrupt number and sent out to the PIC
  * to declare the interrupt finished */
- // Is this actually correct?
-#define EOI             0x60
-
-
-/* (Rodney added): This contains the irq mask for both 8259A irq controllers */
-static unsigned int cached_irq_mask = 0xffff;
-#define CACHED_MASTER      (cached_irq_mask & 0xFF)   // Rodney: this is Linux's cached_21 variable. I added the bitwise &
-#define CACHED_SLAVE       (cached_irq_mask >> 8)     // Rodney: this is Linux's cached_A1 variable
-
-/* Rodney added constants */
-#define EIGHT_BIT_MASK 0xFF
-#define SLAVE_BIT      8
+#define EOI 0x60   // Rodney: Notice it's 0x60 (which is correct), not just 0x20 
 
 /* Externally-visible functions */
 
