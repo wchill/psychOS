@@ -51,9 +51,6 @@ static const uint8_t keyboard_map[128] =
 static volatile uint8_t keyboard_state[128] = {0};
 
 void keyboard_handler() {
-	// Acknowledge interrupt
-	send_eoi(KEYBOARD_IRQ);
-
 	uint8_t status;
 	do {
 		// Check keyboard status
@@ -77,4 +74,7 @@ void keyboard_handler() {
 			}
 		}
 	} while (status & 0x01);
+  
+  // Acknowledge interrupt
+  send_eoi(KEYBOARD_IRQ);
 }

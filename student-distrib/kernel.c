@@ -203,9 +203,10 @@ entry (unsigned long magic, unsigned long addr)
 
 	/* Init the PIC */
 	i8259_init();
+	enable_irq(SLAVE_8259_IRQ);
 
 	// Uncomment below to cause divide-by-zero exception
-	// asm volatile("movl $0, %eax; divl %eax;");
+	//asm volatile("movl $0, %eax; divl %eax;");
 
 	/* Initialize devices, memory, filesystem, enable device interrupts on the
 	 * PIC, any other initialization stuff... */
@@ -224,17 +225,17 @@ entry (unsigned long magic, unsigned long addr)
 	{
 		char prev;
 
-		outb(RTC_DISABLE_NMI | RTC_REG_B, RTC_STATUS_PORT);     // select register B, and disable NMI
-		prev = inb(RTC_DATA_PORT);								// read the current value of register B
-		outb(RTC_DISABLE_NMI | RTC_REG_B, RTC_STATUS_PORT);		// set the index again (a read will reset the index to register D)
-		outb(prev | 0x40, RTC_DATA_PORT);						// write the previous value ORed with 0x40. This turns on bit 6 of register B
+		outb(RTC_DISABLE_NMI | RTC_REG_B, RTC_STATUS_PORT);     	// select register B, and disable NMI
+		prev = inb(RTC_DATA_PORT);									// read the current value of register B
+		outb(RTC_DISABLE_NMI | RTC_REG_B, RTC_STATUS_PORT);			// set the index again (a read will reset the index to register D)
+		outb(prev | RTC_ENABLE_INTERRUPTS, RTC_DATA_PORT);	// write the previous value ORed with 0x40. This turns on bit 6 of register B
 
 		// 2Hz interrupt rate
-		uint8_t rate = 15;
+		uint8_t rate = 15;										// 32768 >> (rate - 1) = 2 gives us 15
 		outb(RTC_DISABLE_NMI | RTC_REG_A, RTC_STATUS_PORT);
-		prev=inb(RTC_DATA_PORT);								// get initial value of register A
+		prev = inb(RTC_DATA_PORT);								// get initial value of register A
 		outb(RTC_DISABLE_NMI | RTC_REG_A, RTC_STATUS_PORT);		// reset index to A
-		outb((prev & 0xF0) | rate, RTC_DATA_PORT);				//write only our rate to A. Note, rate is the bottom 4 bits.
+		outb((prev & 0xF0) | rate, RTC_DATA_PORT);				//write only our rate to A. Note, rate is the bottom 4 bits, so keep the top 4 bits.
 
 		install_interrupt_handler(IRQ_INT_NUM(RTC_IRQ), rtc_handler_wrapper, KERNEL_CS, PRIVILEGE_KERNEL);
 		enable_irq(RTC_IRQ);

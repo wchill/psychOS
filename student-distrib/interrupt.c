@@ -40,4 +40,9 @@ void exception_handler(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
 	printf(" esi: 0x%#x    edi:    0x%#x\n", esi, edi);
 	printf("\n");
 	printf(" eip: 0x%#x    eflags: 0x%#x\n", eip, eflags);
+
+	// loop forever
+	for(;;) {
+    	asm("hlt");
+ 	}
 }

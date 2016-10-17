@@ -20,9 +20,6 @@ i8259_init(void)
     // Rodney: may eventually need a spinlock here
     cli_and_save(flags);
 
-    outb(EIGHT_BIT_MASK, MASTER_8259_PORT_DATA);      /* mask all of 8259A-1 */
-    outb(EIGHT_BIT_MASK, SLAVE_8259_PORT_DATA);       /* mask all of 8259A-2 */
-
     /* Instructions for Master */
     outb(ICW1,        MASTER_8259_PORT_COMMAND); /* ICW1: select 8259A-1 init */
     outb(ICW2_MASTER, MASTER_8259_PORT_DATA);    /* ICW2: 8259A-1 IR0-7 mapped to 0x20-0x27 */
@@ -34,6 +31,9 @@ i8259_init(void)
     outb(ICW2_SLAVE, SLAVE_8259_PORT_DATA);      /* ICW2: 8259A-2 IR0-7 mapped to 0x28-0x2f */
     outb(ICW3_SLAVE, SLAVE_8259_PORT_DATA);      /* 8259A-2 is a slave on master's IR2 */
     outb(ICW4,       SLAVE_8259_PORT_DATA);      /* (slave's support for AEOI in flat mode is to be investigated) */
+
+    outb(EIGHT_BIT_MASK, MASTER_8259_PORT_DATA);      /* mask all of 8259A-1 */
+    outb(EIGHT_BIT_MASK, SLAVE_8259_PORT_DATA);       /* mask all of 8259A-2 */
 
     restore_flags(flags);
 }
@@ -80,9 +80,13 @@ disable_irq(uint32_t irq_num)
 void
 send_eoi(uint32_t irq_num)
 {
-	// http://wiki.osdev.org/PIC#End_of_Interrupt
-    if (irq_num & SLAVE_BIT)
-    	outb(0x20, SLAVE_8259_PORT_COMMAND);
-    outb(0x20, MASTER_8259_PORT_COMMAND);
+    if(irq_num >= 0) {
+        if(irq_num < 8) {
+            outb(EOI | irq_num, MASTER_8259_PORT_COMMAND);
+        } else if(irq_num < 16) {
+            outb( EOI | (irq_num - 8), SLAVE_8259_PORT_COMMAND);
+            outb( EOI | SLAVE_8259_IRQ, MASTER_8259_PORT_COMMAND);
+        }
+    }
 }
 

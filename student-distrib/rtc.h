@@ -6,6 +6,7 @@
 #define RTC_DATA_PORT 0x71
 
 #define RTC_DISABLE_NMI 0x80
+#define RTC_ENABLE_INTERRUPTS 0x40
 
 #define RTC_REG_A 0xA
 #define RTC_REG_B 0xB
