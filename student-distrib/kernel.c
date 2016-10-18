@@ -23,17 +23,23 @@ typedef struct pd_entry {
 	union {
 		uint32_t val;
 		struct {
-			uint32_t page_table_addr_31_to_12 : 20;
-			uint32_t reserved : 3;
-			uint32_t global_ignored : 1;
-			uint32_t page_size : 1;
-			uint32_t dirty_ignored : 1;
-			uint32_t accessed : 1;
-			uint32_t cache_disabled : 1;
-			uint32_t write_through : 1;
-			uint32_t user_accessible : 1;
-			uint32_t read_write : 1;
 			uint32_t present : 1;
+			uint32_t read_write : 1;
+			uint32_t user_accessible : 1;
+			uint32_t write_through : 1;
+			uint32_t cache_disabled : 1;
+			uint32_t accessed : 1;
+			uint32_t dirty_ignored : 1;
+			uint32_t page_size : 1;
+			uint32_t global_ignored : 1;
+			uint32_t reserved : 3;
+			union {
+				uint32_t page_table_addr_31_to_12 : 20;
+				struct {
+					uint32_t reserved_2 : 10;
+					uint32_t physical_addr_31_to_22 : 10;
+				} __attribute__((packed)) ;
+			};
 		} __attribute__((packed)) ;
 	};
 } pd_entry;
@@ -42,17 +48,17 @@ typedef struct __attribute__((packed)) pt_entry {
 	union {
 		uint32_t val;
 		struct {
-			uint32_t physical_addr_31_to_12 : 20;
-			uint32_t reserved : 3;
-			uint32_t global : 1;
-			uint32_t page_size_ignored : 1;
-			uint32_t dirty : 1;
-			uint32_t accessed : 1;
-			uint32_t cache_disabled : 1;
-			uint32_t write_through : 1;
-			uint32_t user_accessible : 1;
-			uint32_t read_write : 1;
 			uint32_t present : 1;
+			uint32_t read_write : 1;
+			uint32_t user_accessible : 1;
+			uint32_t write_through : 1;
+			uint32_t cache_disabled : 1;
+			uint32_t accessed : 1;
+			uint32_t dirty : 1;
+			uint32_t page_size_ignored : 1;
+			uint32_t global : 1;
+			uint32_t reserved : 3;
+			uint32_t physical_addr_31_to_12 : 20;
 		} __attribute__((packed)) ;
 	};
 } pt_entry;
@@ -67,7 +73,7 @@ void initialize_paging() {
 		pd_entry video_mem_entry;
 		int i;
 
-		video_mem_entry.page_table_addr_31_to_12 = (uint32_t) &video_mem_page_table[0];
+		video_mem_entry.page_table_addr_31_to_12 = (uint32_t) &video_mem_page_table[0] >> 12;
 		video_mem_entry.global_ignored = 0;
 		video_mem_entry.page_size = 0;
 		video_mem_entry.dirty_ignored = 0;
@@ -80,13 +86,13 @@ void initialize_paging() {
 		paging_directory[0] = video_mem_entry;
 
 		for(i = 0; i < 1024; i++) {
-			uint32_t addr = 0x1000 * i;
+			uint32_t addr = 0x4000 * i;
 			pt_entry my_entry;
 
 			if(addr != VIDEO) {
 				my_entry.present = 0;
 			} else {
-				my_entry.physical_addr_31_to_12 = (uint32_t) VIDEO >> 12;
+				my_entry.physical_addr_31_to_12 = (uint32_t) addr >> 12;
 				my_entry.global = 1;
 				my_entry.page_size_ignored = 0;
 				my_entry.dirty = 0;
@@ -104,8 +110,9 @@ void initialize_paging() {
 	{
 		pd_entry kernel_page_entry;
 
-		kernel_page_entry.page_table_addr_31_to_12 = 4194304 >> 12; // address 4MB
-		kernel_page_entry.global_ignored = 0;
+		kernel_page_entry.physical_addr_31_to_22 = 1; // address 4MB
+		kernel_page_entry.reserved_2 = 0;
+		kernel_page_entry.global_ignored = 1;
 		kernel_page_entry.page_size = 1;
 		kernel_page_entry.dirty_ignored = 0;
 		kernel_page_entry.accessed = 0;
