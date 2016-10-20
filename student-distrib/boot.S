@@ -6,6 +6,9 @@
 #include "multiboot.h"
 #include "x86_desc.h"
 
+# GDT Reference: 
+# Intel Manual - https://courses.engr.illinois.edu/ece391/secure/references/IA32-ref-manual-vol-3.pdf (see page 336, steps 2, 3)
+
 .text
 
 	# Multiboot header (required for GRUB to boot us)
@@ -13,12 +16,12 @@
 	.long MULTIBOOT_HEADER_FLAGS
 	.long -(MULTIBOOT_HEADER_MAGIC+MULTIBOOT_HEADER_FLAGS)
 
-# GDTR has two parts: 16-bit size and 32-bit address to table
+# GDTR (GDT register) is 48 bits. It has two parts: 16-bit size and 32-bit address to table
 gdtr:
-gdtr_size:
-	.word 0
+gdtr_size:      # size is needed since it may be smaller than max size of 8192
+	.word 0     # word is 16 bits
 gdtr_ptr:
-	.long 0
+	.long 0     # long is 32 bits
 
 # Entrypoint to the kernel
 .globl  start, _start

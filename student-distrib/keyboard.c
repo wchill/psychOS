@@ -8,7 +8,7 @@
     http://www.osdever.net/bkerndev/Docs/keyboard.htm
    All credits where due
 */
-static const uint8_t keyboard_map[128] =
+static const uint8_t keyboard_map[KEYBOARD_SIZE] =
 {
     0,  27, '1', '2', '3', '4', '5', '6', '7', '8',	/* 9 */
   '9', '0', '-', '=', '\b',	/* Backspace */
@@ -48,8 +48,16 @@ static const uint8_t keyboard_map[128] =
     0,	/* All other keys are undefined */
 };
 
-static volatile uint8_t keyboard_state[128] = {0};
+static volatile uint8_t keyboard_state[KEYBOARD_SIZE] = {0};
 
+/*
+ * keyboard_handler
+ *   DESCRIPTION:  this code runs when keyboard Interrupt happens. Outputs keys pressed
+ *   INPUTS:       none
+ *   OUTPUTS:      Outputs characters to screen
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: Screen is updated
+ */  
 void keyboard_handler() {
 	uint8_t status;
 	do {

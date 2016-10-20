@@ -9,6 +9,11 @@
 uint8_t master_mask = EIGHT_BIT_MASK; /* IRQs 0-7  */
 uint8_t slave_mask = EIGHT_BIT_MASK;  /* IRQs 8-15 */
 
+/* PIC References:
+		https://www.kernel.org/pub/linux/kernel/people/marcelo/linux-2.4/arch/mips64/kernel/i8259.c  (has actual Linux code for first 3 functions below)
+		Lecture 9 (especially slide 21)
+*/
+
 /* Initialize the 8259 PIC */
 void
 i8259_init(void)

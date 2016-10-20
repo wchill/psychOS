@@ -9,6 +9,8 @@
 #define KEYBOARD_STATUS_PORT 0x64
 #define KEYCODE_MASK 0x7F
 
+#define KEYBOARD_SIZE 128
+
 void keyboard_handler();
 extern void keyboard_handler_wrapper(void);
 
