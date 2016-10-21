@@ -21,6 +21,11 @@
 
 /* Number of vectors in the interrupt descriptor table (IDT) */
 #define NUM_VEC 256
+#define NUM_RESERVED_VEC 32
+
+/* Privilege levels */
+#define PRIVILEGE_KERNEL 0
+#define PRIVILEGE_USER 3
 
 #ifndef ASM
 
@@ -118,6 +123,8 @@ extern uint16_t ldt_desc;
 extern uint32_t ldt_size;
 extern seg_desc_t ldt_desc_ptr;
 extern seg_desc_t gdt_ptr;
+extern seg_desc_t gdt;
+extern uint32_t gdt_size;
 extern uint32_t ldt;
 
 extern uint32_t tss_size;

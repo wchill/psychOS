@@ -8,14 +8,22 @@
 
 #include "types.h"
 
-/* Ports that each PIC sits on */
-#define MASTER_8259_PORT 0x20
-#define SLAVE_8259_PORT  0xA0
+/* Rodney added ports that each PIC sits on */
+#define MASTER_8259_PORT_COMMAND 0x20
+#define MASTER_8259_PORT_DATA    0x21
+ 
+#define SLAVE_8259_PORT_COMMAND  0xA0
+#define SLAVE_8259_PORT_DATA     0xA1
+
+/* Rodney added constants */
+#define SLAVE_BIT            8
+#define IRQ_MASTER_OFFSET    8
+#define EIGHT_BIT_MASK    0xFF
 
 /* Initialization control words to init each PIC.
  * See the Intel manuals for details on the meaning
  * of each word */
-#define ICW1    0x11
+#define ICW1          0x11
 #define ICW2_MASTER   0x20
 #define ICW2_SLAVE    0x28
 #define ICW3_MASTER   0x04
@@ -25,7 +33,7 @@
 /* End-of-interrupt byte.  This gets OR'd with
  * the interrupt number and sent out to the PIC
  * to declare the interrupt finished */
-#define EOI             0x60
+#define EOI 0x60   // Rodney: Notice it's 0x60 (which is correct), not just 0x20 
 
 /* Externally-visible functions */
 
