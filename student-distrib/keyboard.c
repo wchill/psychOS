@@ -313,6 +313,8 @@ uint32_t keyboard_open(const uint8_t *filename) {
 }
 
 uint32_t keyboard_read(int32_t fd, void *buf, int32_t nbytes) {
+    // TODO: Do something with the fd
+
     uint32_t retval;
     uint32_t max_len;
     uint32_t flags;

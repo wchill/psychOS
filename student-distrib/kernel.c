@@ -344,6 +344,10 @@ entry (unsigned long magic, unsigned long addr)
 
 		// Handle syscalls
 		install_interrupt_handler(SYSCALL_INT, syscall_handler_wrapper, KERNEL_CS, PRIVILEGE_USER);
+
+        // Install device handlers
+        install_interrupt_handler(IRQ_INT_NUM(KEYBOARD_IRQ), keyboard_handler_wrapper, KERNEL_CS, PRIVILEGE_KERNEL);
+        install_interrupt_handler(IRQ_INT_NUM(RTC_IRQ), rtc_handler_wrapper, KERNEL_CS, PRIVILEGE_KERNEL);
 	}
 
 	printf("Initializing the PIC\n");
@@ -356,13 +360,6 @@ entry (unsigned long magic, unsigned long addr)
 
 	/* Initialize devices, memory, filesystem, enable device interrupts on the
 	 * PIC, any other initialization stuff... */
-
-	// Shouldn't need to do any keyboard initialization other than enabling IRQ, but just in case:
-	// http://wiki.osdev.org/%228042%22_PS/2_Controller#Initialising_the_PS.2F2_Controller
-	{
-		install_interrupt_handler(IRQ_INT_NUM(KEYBOARD_IRQ), keyboard_handler_wrapper, KERNEL_CS, PRIVILEGE_KERNEL);
-		keyboard_open("");
-	}
 	
 	printf("Initializing Paging\n");
 	initialize_paging();
@@ -374,17 +371,20 @@ entry (unsigned long magic, unsigned long addr)
 	printf("Enabling Interrupts\n");
 	sti();
 
+    keyboard_open("stdin");
+
 	/* Rodney: this is where we test RTC - Important: we MUST test rtc_read only after the sti() command above executes */
 	rtc_open();   // tests "rtc_open"
 	rtc_write(4); // tests "rtc_write". 4 is Hz interrupt rate. Can use value 2, 4, or 8... anything bigger will flash screen too fast.
 	rtc_read();   // since code doesn't infinitely loop here, that means the function returned.   // CODE CURRENTLY INFINITE LOOPS HERE
 
-
 	/* Execute the first program (`shell') ... */
 
 	/* Spin (nicely, so we don't chew up cycles) */
+    uint8_t input[128];
 	for(;;) {
     	asm("hlt");
+        keyboard_read(0, input, 128);
  	}
 }
 
