@@ -522,3 +522,18 @@ test_interrupts(void)
 	}
 	*/
 }
+
+/* Rodney: All functions below have been added by me (or psychOS) */
+
+/*
+* void test_rtc(void)
+*   Inputs: void
+*   Return Value: void
+*	Function: increment video memory (just the top-right of the screen), to show RTC works.
+*/
+
+void
+test_rtc(void)
+{
+	video_mem[(NUM_COLS - 1) << 1]++;
+}
