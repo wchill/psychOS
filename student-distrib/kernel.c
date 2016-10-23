@@ -364,28 +364,12 @@ entry (unsigned long magic, unsigned long addr)
 		enable_irq(KEYBOARD_IRQ);
 	}
 	
-	// Need to initialize RTC before enabling IRQ
-	// See https://courses.engr.illinois.edu/ece391/secure/references/mc146818.pdf
-	// http://wiki.osdev.org/RTC#Programming_the_RTC
-	// https://piazza.com/class/iqsg6pdvods1rw?cid=596
-	{
-		char prev;
+	/* Rodney: this is where we test RTC */
+	rtc_open();   // tests "rtc_open"
+	rtc_write(4); // tests "rtc_write". 4 is Hz interrupt rate. Can use value 2, 4, or 8... anything bigger will flash screen too fast.
 
-		outb(RTC_DISABLE_NMI | RTC_REG_B, RTC_STATUS_PORT);     	// select register B, and disable NMI
-		prev = inb(RTC_DATA_PORT);									// read the current value of register B
-		outb(RTC_DISABLE_NMI | RTC_REG_B, RTC_STATUS_PORT);			// set the index again (a read will reset the index to register D)
-		outb(prev | RTC_ENABLE_INTERRUPTS, RTC_DATA_PORT);	// write the previous value ORed with 0x40. This turns on bit 6 of register B
-
-		// 2Hz interrupt rate
-		uint8_t rate = 15;										// 32768 >> (rate - 1) = 2. So rate of 15 gives us the 2 Hz that mp3 spec asked for.
-		outb(RTC_DISABLE_NMI | RTC_REG_A, RTC_STATUS_PORT);
-		prev = inb(RTC_DATA_PORT);								// get initial value of register A
-		outb(RTC_DISABLE_NMI | RTC_REG_A, RTC_STATUS_PORT);		// reset index to A
-		outb((prev & 0xF0) | rate, RTC_DATA_PORT);				// write only our rate to A. Note, rate is the bottom 4 bits, so keep the top 4 bits. 0xF0 is top 4 bit mask for a char.
-
-		install_interrupt_handler(IRQ_INT_NUM(RTC_IRQ), rtc_handler_wrapper, KERNEL_CS, PRIVILEGE_KERNEL);
-		enable_irq(RTC_IRQ);
-	}
+	/* Rodney: Test for rtc_read: Must show "that the read function returns after an interrupt has occurred" */
+	rtc_read(); // since code doesn't infinitely loop here, that means the function returned.   // CODE CURRENTLY INFINITE LOOPS HERE
 
 	printf("Initializing Paging\n");
 	initialize_paging();
