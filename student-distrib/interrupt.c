@@ -1,5 +1,6 @@
 #include "interrupt.h"
 #include "lib.h"
+#include "keyboard.h"
 #include "x86_desc.h"
 
 void install_interrupt_handler(uint8_t interrupt_num, void *handler, uint8_t seg_selector, uint8_t dpl) {
@@ -24,13 +25,13 @@ void install_interrupt_handler(uint8_t interrupt_num, void *handler, uint8_t seg
 }
 
 void exception_handler(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
-	uint32_t esi, uint32_t edi, uint32_t esp, uint32_t ebp,
+	uint32_t esi, uint32_t edi, uint32_t ebp, uint32_t esp,
 	uint32_t int_num, uint32_t error,
 	uint32_t eip, uint32_t cs, uint32_t eflags) {
 
 	// TODO: check if the values of these registers are actually correct
 
-	clear();
+	clear_terminal();
 	printf("---------------------------AN EXCEPTION HAS OCCURRED-----------------------------\n\n");
 	printf(" An exception has occurred: 0x%x\n", int_num);
 	printf(" The associated error code is: 0x%#x\n", error);

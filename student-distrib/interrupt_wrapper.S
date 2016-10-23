@@ -3,8 +3,8 @@ common_exception_wrapper:
 	# Push all general purpose registers (4x8 = 32 bytes)
 	# Order of values goes like this (high -> low):
 	# eflags, cs, eip, int_num, error, ebp, esp, ..., eax
-	push %ebp
 	push %esp
+	push %ebp
 	push %edi
 	push %esi
 	push %edx
@@ -19,8 +19,8 @@ common_exception_wrapper:
 	pop %edx
 	pop %esi
 	pop %edi
-	pop %esp
 	pop %ebp
+	pop %esp
 	add $8, %esp
 	iret
 
@@ -49,8 +49,8 @@ interrupt_handler_\num:
 	# Push all general purpose registers (4x8 = 32 bytes)
 	# Order of values goes like this (high -> low):
 	# eflags, cs, eip, ebp, esp, ..., eax
-	push %ebp
 	push %esp
+	push %ebp
 	push %edi
 	push %esi
 	push %edx
@@ -65,8 +65,8 @@ interrupt_handler_\num:
 	pop %edx
 	pop %esi
 	pop %edi
-	pop %esp
 	pop %ebp
+	pop %esp
 	iret
 .endm
 

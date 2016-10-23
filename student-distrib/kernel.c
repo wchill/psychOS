@@ -171,7 +171,7 @@ entry (unsigned long magic, unsigned long addr)
 	multiboot_info_t *mbi;
 
 	/* Clear the screen. */
-	clear();
+	clear_terminal();
 
 	/* Am I booted by a Multiboot-compliant boot loader? */
 	if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
@@ -361,7 +361,7 @@ entry (unsigned long magic, unsigned long addr)
 	// http://wiki.osdev.org/%228042%22_PS/2_Controller#Initialising_the_PS.2F2_Controller
 	{
 		install_interrupt_handler(IRQ_INT_NUM(KEYBOARD_IRQ), keyboard_handler_wrapper, KERNEL_CS, PRIVILEGE_KERNEL);
-		enable_irq(KEYBOARD_IRQ);
+		keyboard_open("");
 	}
 	
 	// Need to initialize RTC before enabling IRQ

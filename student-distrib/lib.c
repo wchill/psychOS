@@ -3,31 +3,7 @@
  */
 
 #include "lib.h"
-#define VIDEO 0xB8000
-#define NUM_COLS 80
-#define NUM_ROWS 25
-#define ATTRIB 0x7
-
-static int screen_x;
-static int screen_y;
-static char* video_mem = (char *)VIDEO;
-
-/*
-* void clear(void);
-*   Inputs: void
-*   Return Value: none
-*	Function: Clears video memory
-*/
-
-void
-clear(void)
-{
-    int32_t i;
-    for(i=0; i<NUM_ROWS*NUM_COLS; i++) {
-        *(uint8_t *)(video_mem + (i << 1)) = ' ';
-        *(uint8_t *)(video_mem + (i << 1) + 1) = ATTRIB;
-    }
-}
+#include "keyboard.h"
 
 /* Standard printf().
  * Only supports the following format strings:
@@ -175,28 +151,6 @@ puts(int8_t* s)
 	}
 
 	return index;
-}
-
-/*
-* void putc(uint8_t c);
-*   Inputs: uint_8* c = character to print
-*   Return Value: void
-*	Function: Output a character to the console 
-*/
-
-void
-putc(uint8_t c)
-{
-    if(c == '\n' || c == '\r') {
-        screen_y++;
-        screen_x=0;
-    } else {
-        *(uint8_t *)(video_mem + ((NUM_COLS*screen_y + screen_x) << 1)) = c;
-        *(uint8_t *)(video_mem + ((NUM_COLS*screen_y + screen_x) << 1) + 1) = ATTRIB;
-        screen_x++;
-        screen_x %= NUM_COLS;
-        screen_y = (screen_y + (screen_x / NUM_COLS)) % NUM_ROWS;
-    }
 }
 
 /*
@@ -561,8 +515,10 @@ strncpy(int8_t* dest, const int8_t* src, uint32_t n)
 void
 test_interrupts(void)
 {
+	/*
 	int32_t i;
 	for (i=0; i < NUM_ROWS*NUM_COLS; i++) {
 		video_mem[i<<1]++;
 	}
+	*/
 }
