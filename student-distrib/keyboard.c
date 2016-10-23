@@ -119,18 +119,8 @@ static inline void video_buffer_putc(uint8_t x, uint8_t y, uint8_t ch) {
 
 // Scrolls the screen vertically one row up.
 static void scroll_screen() {
-    // TODO: Fix this function! (scrolling logic doesn't work properly for some reason)
-    // What it should be doing:
-    // 1. Move rows 1-79 to rows 0-78
-    // 2. Blank out row 79
+    memmove((uint16_t*) &video_buffer[VIDEO_INDEX(0, 0)], (uint16_t*) &video_buffer[VIDEO_INDEX(0, 1)], TERMINAL_COLUMNS * (TERMINAL_ROWS - 1) * 2);
 
-    // What it actually does:
-    // Blank the entire screen
-
-    int i;
-    for(i = 0; i < TERMINAL_ROWS - 1; i++) {
-        memcpy((uint16_t*) &video_buffer[VIDEO_INDEX(0, i)], (uint16_t*) &video_buffer[VIDEO_INDEX(0, i+1)], TERMINAL_COLUMNS * 2);
-    }
     uint16_t blank_word = ' ' | (TERMINAL_FOREGROUND_COLOR | TERMINAL_BACKGROUND_COLOR);
     memset_word((uint16_t*) &video_buffer[VIDEO_INDEX(0, TERMINAL_ROWS - 1)], blank_word, TERMINAL_COLUMNS);
 }
@@ -183,7 +173,6 @@ static uint8_t keyboard_putc(uint8_t ch) {
             return 0;
         }
     }
-    set_hardware_cursor(cursor_x, cursor_y);
     return 1;
 }
 
@@ -224,6 +213,7 @@ void putc(uint8_t ch) {
             }
         }
     }
+    set_hardware_cursor(cursor_x, cursor_y);
 }
 
 // Clears the terminal
@@ -285,12 +275,20 @@ void keyboard_handler() {
                     clear_terminal();
                 }
 
+                // Key combos aren't printable
+                if(ctrl_pressed || alt_pressed) {
+                    pressed_char = 0;
+                }
+
                 // Handle shift
                 if(shift_pressed && pressed_char > 0) {
                     pressed_char = keyboard_map_shift[(int) keycode];
                 }
 
-                keyboard_putc(pressed_char);
+                // Print to screen
+                if(pressed_char > 0) {
+                    keyboard_putc(pressed_char);
+                }
             }
         }
     } while (status & 0x01);

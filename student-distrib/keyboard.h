@@ -30,7 +30,8 @@
 #define KEYBOARD_CAPS_LOCK 0x3A
 
 // Useful macro to get index into a uint16_t array representing video memory
-#define VIDEO_INDEX(x, y) (y * TERMINAL_COLUMNS + x)
+// Seems to be broken for some reason?
+#define VIDEO_INDEX(x, y) ((y) * TERMINAL_COLUMNS + (x))
 
 void keyboard_handler();
 extern void keyboard_handler_wrapper(void);
