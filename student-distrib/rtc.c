@@ -25,8 +25,8 @@ void rtc_handler() {
 	outb(RTC_REG_C, RTC_STATUS_PORT);
 	inb(RTC_DATA_PORT);
 
-	test_interrupts(); // This causes screen to flash. Can comment it out to stop flashing.
-	//test_rtc();      // This causes just the top-right of screen to flash. Can comment it out to stop flashing.
+	//test_interrupts(); // This causes screen to flash. Can comment it out to stop flashing.
+	test_rtc();      // This causes just the top-right of screen to flash. Can comment it out to stop flashing.
 
 	rtc_tick_flag = 0; // Rodney: newly added for 3.2
 	

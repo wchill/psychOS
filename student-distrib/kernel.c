@@ -364,13 +364,6 @@ entry (unsigned long magic, unsigned long addr)
 		enable_irq(KEYBOARD_IRQ);
 	}
 	
-	/* Rodney: this is where we test RTC */
-	rtc_open();   // tests "rtc_open"
-	rtc_write(4); // tests "rtc_write". 4 is Hz interrupt rate. Can use value 2, 4, or 8... anything bigger will flash screen too fast.
-
-	/* Rodney: Test for rtc_read: Must show "that the read function returns after an interrupt has occurred" */
-	rtc_read(); // since code doesn't infinitely loop here, that means the function returned.   // CODE CURRENTLY INFINITE LOOPS HERE
-
 	printf("Initializing Paging\n");
 	initialize_paging();
 
@@ -380,6 +373,12 @@ entry (unsigned long magic, unsigned long addr)
 	 * without showing you any output */
 	printf("Enabling Interrupts\n");
 	sti();
+
+	/* Rodney: this is where we test RTC - Important: we MUST test rtc_read only after the sti() command above executes */
+	rtc_open();   // tests "rtc_open"
+	rtc_write(4); // tests "rtc_write". 4 is Hz interrupt rate. Can use value 2, 4, or 8... anything bigger will flash screen too fast.
+	rtc_read();   // since code doesn't infinitely loop here, that means the function returned.   // CODE CURRENTLY INFINITE LOOPS HERE
+
 
 	/* Execute the first program (`shell') ... */
 

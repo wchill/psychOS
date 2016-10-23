@@ -37,5 +37,4 @@ int32_t rtc_open();
 /* Sets RTC to frequency of 2 Hz. We keep RTC interrupts on */
 int32_t rtc_close();
 
-
 #endif
