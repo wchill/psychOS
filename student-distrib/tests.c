@@ -20,19 +20,19 @@ static uint16_t index_num = 0;
  *   SIDE EFFECTS: Dependent on test that is run
  */  
 void test_suite(int test_num){
-     if (test_num == 1) {
+     if (test_num == 1) {      // Reprsents suggested test #1 on piazza.
          list_all_files();
      }
-     else if (test_num == 2) {
+     else if (test_num == 2) { // Reprsents suggested test #2 on piazza.
          read_files_by_name();
      }
-     else if (test_num == 3) {
+     else if (test_num == 3) { // Reprsents suggested test #3 on piazza.
          read_file_by_index();
      }
-     else if (test_num == 4) {
+     else if (test_num == 4) { // Reprsents suggested test #4 on piazza.
          start_rtc_test();
      }
-     else if (test_num == 5) {
+     else if (test_num == 5) { // Reprsents suggested test #5 on piazza.
          stop_rtc_test();
      }
 }
@@ -61,14 +61,14 @@ void list_all_files(){
         if(res >= 0) {
 
             // Copy file name into C-style string
-            char file_name[33];
+            char file_name[FILE_NAME_LIMIT + 1];
             memset(file_name, 0, sizeof(file_name));
             memcpy(file_name, dentry.file_name, sizeof(dentry.file_name));
 
             printf(" name \"%s\"", file_name);
 
             // Padding
-            for(j = 0; j < 50 - strlen(file_name); j++) {
+            for(j = 0; j < 50 - strlen(file_name); j++) { // 50 represents how many spaces we want filename to take up on screen
                 putc(' ');
             }
 
@@ -99,16 +99,16 @@ void read_files_by_name(){
         res = 0;
 
         // Read and print 4k bytes from the file at a time
-        uint8_t buf[4096];
+        uint8_t buf[BUFFER_4K];
         do {
-            res = read_data(dentry.inode_num, num_read, buf, 4096);
+            res = read_data(dentry.inode_num, num_read, buf, BUFFER_4K);
             terminal_write(0, buf, res);
             num_read += res;
         } while(res > 0);
     }
 
     // Copy file name into C-style string
-    char file_name[33];
+    char file_name[FILE_NAME_LIMIT + 1];
     memset(file_name, 0, sizeof(file_name));
     memcpy(file_name, dentry.file_name, sizeof(dentry.file_name));
 
@@ -141,9 +141,9 @@ void read_file_by_index(){
             res = 0;
 
             // Read and print 4k bytes from the file at a time
-            uint8_t buf[4096];
+            uint8_t buf[BUFFER_4K];
             do {
-                res = read_data(dentry.inode_num, num_read, buf, 4096);
+                res = read_data(dentry.inode_num, num_read, buf, BUFFER_4K);
                 terminal_write(0, buf, res);
                 num_read += res;
             } while(res > 0);
@@ -155,7 +155,7 @@ void read_file_by_index(){
     } while(res == -1);
 
     // Copy file name into C-style string
-    char file_name[33];
+    char file_name[FILE_NAME_LIMIT + 1];
     memset(file_name, 0, sizeof(file_name));
     memcpy(file_name, dentry.file_name, sizeof(dentry.file_name));
     

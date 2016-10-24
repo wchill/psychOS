@@ -79,7 +79,7 @@ int32_t dir_read(int32_t fd, void *buf, int32_t nbytes) {
 
     index_num++;
 
-    int num_bytes_to_copy = 32;
+    int num_bytes_to_copy = 32;    // 32 is number of bytes to copy
     if(num_bytes_to_copy > nbytes) num_bytes_to_copy = nbytes;
     memcpy(buf, dentry.file_name, num_bytes_to_copy);
     return num_bytes_to_copy;

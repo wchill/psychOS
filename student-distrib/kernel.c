@@ -30,6 +30,10 @@
 #define NUM_BITS_ADDR       20     /* number of bits to address Page Table or Page. 
                                       However, we only use the top 10 bits if it's a 4MB Page      */
 
+/* Constants for 3.2 */
+#define BUFFER_4K 4096
+#define KEYBOARD_SIZE 128
+
 /* Paging References:
 		MP 3.1 Documentation - page 6
 		http://wiki.osdev.org/Paging
@@ -387,54 +391,54 @@ entry (unsigned long magic, unsigned long addr)
     //rtc_read(); // tests "rtc_read" since code doesn't infinitely loop here, that means the function returned.
 
 	/* Execute the first program (`shell') ... */
-	/*
-    {
-        uint8_t input[128];
-        int i;
-        for(i = 0; i < 63; i++) {
-            dentry_t dentry;
-            int32_t res = read_dentry_by_index(i, &dentry);
-            if(res >= 0) {
-                terminal_write(0, dentry.file_name, 32);
-                char c = '\n';
-                terminal_write(0, &c, 1);
-            }
-        }
-        {
-            dentry_t dentry;
-            int32_t res = read_dentry_by_name("verylargetextwithverylongname.tx", &dentry);
-            int32_t num_read = 0;
-            if(res >= 0) {
-                res = 0;
-                uint8_t buf[4096];
-                do {
-                    res = read_data(dentry.inode_num, num_read, buf, 4096);
-                    terminal_write(0, buf, res);
-                    num_read += res;
-                } while(res > 0);
-            }
-        }
-        terminal_read(0, input, 128);
-        {
-            dentry_t dentry;
-            int32_t res = read_dentry_by_name("shell", &dentry);
-            int32_t num_read = 0;
-            if(res >= 0) {
-                res = 0;
-                uint8_t buf[4096];
-                do {
-                    res = read_data(dentry.inode_num, num_read, buf, 4096);
-                    terminal_write(0, buf, res);
-                    num_read += res;
-                } while(res > 0);
-            }
-        }
-    }
-    */
+	
+    // {
+    //     uint8_t input[KEYBOARD_SIZE];
+    //     int i;
+    //     for(i = 0; i < 63; i++) { // 63 plus 1 is the number of dentrys we read
+    //         dentry_t dentry;
+    //         int32_t res = read_dentry_by_index(i, &dentry);
+    //         if(res >= 0) {
+    //             terminal_write(0, dentry.file_name, 32); // 32 is number of bytes we're writing to terminal
+    //             char c = '\n';
+    //             terminal_write(0, &c, 1);
+    //         }
+    //     }
+    //     {
+    //         dentry_t dentry;
+    //         int32_t res = read_dentry_by_name("verylargetextwithverylongname.tx", &dentry);
+    //         int32_t num_read = 0;
+    //         if(res >= 0) {
+    //             res = 0;
+    //             uint8_t buf[BUFFER_4K];
+    //             do {
+    //                 res = read_data(dentry.inode_num, num_read, buf, BUFFER_4K);
+    //                 terminal_write(0, buf, res);
+    //                 num_read += res;
+    //             } while(res > 0);
+    //         }
+    //     }
+    //     terminal_read(0, input, KEYBOARD_SIZE);
+    //     {
+    //         dentry_t dentry;
+    //         int32_t res = read_dentry_by_name("shell", &dentry);
+    //         int32_t num_read = 0;
+    //         if(res >= 0) {
+    //             res = 0;
+    //             uint8_t buf[BUFFER_4K];
+    //             do {
+    //                 res = read_data(dentry.inode_num, num_read, buf, BUFFER_4K);
+    //                 terminal_write(0, buf, res);
+    //                 num_read += res;
+    //             } while(res > 0);
+    //         }
+    //     }
+    // }
+    
 	/* Spin (nicely, so we don't chew up cycles) */
-    uint8_t input[128];
+    uint8_t input[KEYBOARD_SIZE];
 	for(;;) {
     	asm("hlt");
-        terminal_read(0, input, 128);
+        terminal_read(0, input, KEYBOARD_SIZE);
  	}
 }

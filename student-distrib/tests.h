@@ -1,6 +1,9 @@
 #ifndef _TESTS_H
 #define _TESTS_H
 
+#define FILE_NAME_LIMIT   32
+#define BUFFER_4K       4096
+
 void test_suite();
 
 void list_all_files();      // Test #1

@@ -27,11 +27,11 @@ static void set_hardware_cursor(uint8_t x, uint8_t y) {
 
     // Select index 14 in the CRTC register and write upper byte
     outb(14, VGA_CRTC_PORT_COMMAND);
-    outb(index >> 8, VGA_CRTC_PORT_DATA);
+    outb(index >> 8, VGA_CRTC_PORT_DATA); // 8 is a bitshift to get rid of lowest 8 bits
 
     // Select index 15 in the CRTC register and write lower byte
     outb(15, VGA_CRTC_PORT_COMMAND);
-    outb(index & 0xFF, VGA_CRTC_PORT_DATA);
+    outb(index & 0xFF, VGA_CRTC_PORT_DATA);  // 0xFF is a mash to grab lowest 8 bits
 }
 
 // Places the given character at (x, y) in video memory.
@@ -44,7 +44,7 @@ static inline void video_buffer_putc(uint8_t x, uint8_t y, uint8_t ch) {
 // Scrolls the screen vertically one row up.
 static void scroll_screen() {
     // Move the last 3840 bytes (79 rows) forward 160 bytes (1 row), overwriting the first row
-    memmove((uint16_t*) &video_buffer[VIDEO_INDEX(0, 0)], (uint16_t*) &video_buffer[VIDEO_INDEX(0, 1)], TERMINAL_COLUMNS * (TERMINAL_ROWS - 1) * 2);
+    memmove((uint16_t*) &video_buffer[VIDEO_INDEX(0, 0)], (uint16_t*) &video_buffer[VIDEO_INDEX(0, 1)], TERMINAL_COLUMNS * (TERMINAL_ROWS - 1) * 2); // 2 is to double the value
 
     // Set the last row to be blank
     uint16_t blank_word = ' ' | (TERMINAL_FOREGROUND_COLOR | TERMINAL_BACKGROUND_COLOR);

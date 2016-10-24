@@ -7,7 +7,7 @@
 // 2 - Caps lock only
 // 3 - Both shift and caps lock
 
-const uint8_t keyboard_map[4][KEYBOARD_SIZE] = {
+const uint8_t keyboard_map[4][KEYBOARD_SIZE] = { // 4 represents the 4 keymaps that we have.
 {
     0,          // 00 - Error code
     27,         // 01 - Esc

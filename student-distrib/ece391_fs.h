@@ -10,24 +10,24 @@ typedef struct dentry_t {
 	char file_name[32];
 	uint32_t file_type;
 	uint32_t inode_num;
-	uint8_t reserved[24];
+	uint8_t reserved[24]; 			// Rodney: 24 represents # of reserved bytes
 } __attribute__((packed)) dentry_t;
 
 typedef struct boot_block_t {
 	uint32_t num_directory_entries;
 	uint32_t num_inodes;
 	uint32_t num_data_blocks;
-	uint8_t reserved[52];
-	dentry_t directory_entries[63];
+	uint8_t reserved[52]; 			// Rodney: 52 represents # of reserved bytes
+	dentry_t directory_entries[63]; // Rodney: 63 represents number of directory entries
 } __attribute__((packed)) boot_block_t;
 
 typedef struct inode_block_t {
 	uint32_t file_length;
-	uint32_t data_blocks[1023];
+	uint32_t data_blocks[1023];	 	// Rodney: 1023 represents number of data blocks.
 } __attribute__((packed)) inode_block_t;
 
 typedef struct data_block_t {
-	uint8_t data[4096];
+	uint8_t data[4096]; 			// Rodney: 4096 is 4k, the size of our data block
 } data_block_t;
 
 /*
