@@ -5,6 +5,7 @@
 #include "types.h"
 #include "lib.h"
 #include "x86_desc.h"
+#include "tests.h"
 
 static volatile uint8_t keyboard_state[KEYBOARD_SIZE] = {0};
 static volatile uint8_t caps_lock_status = 0;
@@ -183,8 +184,7 @@ void keyboard_handler() {
                 uint8_t ctrl_pressed = keyboard_state[KEYBOARD_CTRL];
                 uint8_t alt_pressed = keyboard_state[KEYBOARD_ALT];
 
-                // TODO: handle caps lock differently from shift (symbols should only work with shift, this will require another keymap)
-                uint8_t shift_pressed = keyboard_state[KEYBOARD_LEFT_SHIFT] || keyboard_state[KEYBOARD_RIGHT_SHIFT];;
+                uint8_t shift_pressed = keyboard_state[KEYBOARD_LEFT_SHIFT] || keyboard_state[KEYBOARD_RIGHT_SHIFT];
 
                 int map_index = shift_pressed | (caps_lock_status << 1);
                 uint8_t pressed_char = keyboard_map[map_index][(int) keycode];
@@ -205,6 +205,10 @@ void keyboard_handler() {
                     for(i = 0; i < len; i++) {
                         putc(current_buf[i]);
                     }
+                }
+
+                if (ctrl_pressed && pressed_char >= '1' && pressed_char <= '5'){
+                    test_suite(pressed_char - '0');
                 }
 
                 // Key combos aren't printable
@@ -287,4 +291,14 @@ uint32_t terminal_close(int32_t fd) {
     restore_flags(flags);
     // disable_irq(KEYBOARD_IRQ);
     return 0;
+}
+
+// copy keyboard state to buf
+void get_keyboard_state(uint8_t *buf) {
+    uint32_t flags;
+    cli_and_save(flags);
+
+    memcpy(buf, (uint8_t*) keyboard_state, KEYBOARD_BUFFER_SIZE);
+
+    restore_flags(flags);
 }

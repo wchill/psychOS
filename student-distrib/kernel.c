@@ -12,6 +12,7 @@
 #include "interrupt.h"
 #include "syscall.h"
 #include "rtc.h"
+#include "tests.h" // added for 3.2
 
 /* Macros. */
 /* Check if the bit BIT in FLAGS is set. */
@@ -383,68 +384,65 @@ entry (unsigned long magic, unsigned long addr)
 
     terminal_open("stdin");
 
-	/* Rodney: this is where we test RTC - Important: we MUST test rtc_read only after the sti() command above executes */
-	rtc_open();   // tests "rtc_open"
-	rtc_write(4); // tests "rtc_write". 4 is Hz interrupt rate. Can use value 2, 4, or 8... anything bigger will flash screen too fast.
-	rtc_read();   // since code doesn't infinitely loop here, that means the function returned.   // CODE CURRENTLY INFINITE LOOPS HERE
+    //rtc_read(); // tests "rtc_read" since code doesn't infinitely loop here, that means the function returned.
 
 	/* Execute the first program (`shell') ... */
-    {
-        uint8_t input[128];
-        int i;
-        for(i = 0; i < 63; i++) {
-            dentry_t dentry;
-            int32_t res = read_dentry_by_index(i, &dentry);
-            if(res >= 0) {
-                terminal_write(0, dentry.file_name, 32);
-                char c = '\n';
-                terminal_write(0, &c, 1);
-            }
-        }
-        {
-            dentry_t dentry;
-            int32_t res = read_dentry_by_name("frame0.txt", &dentry);
-            int32_t num_read = 0;
-            if(res >= 0) {
-                res = 0;
-                uint8_t buf[4096];
-                do {
-                    res = read_data(dentry.inode_num, num_read, buf, 4096);
-                    terminal_write(0, buf, res);
-                    num_read += res;
-                } while(res > 0);
-            }
-        }
-        {
-            dentry_t dentry;
-            int32_t res = read_dentry_by_name("frame1.txt", &dentry);
-            int32_t num_read = 0;
-            if(res >= 0) {
-                res = 0;
-                uint8_t buf[4096];
-                do {
-                    res = read_data(dentry.inode_num, num_read, buf, 4096);
-                    terminal_write(0, buf, res);
-                    num_read += res;
-                } while(res > 0);
-            }
-        }
-        {
-            dentry_t dentry;
-            int32_t res = read_dentry_by_name("verylargetextwithverylongname.tx", &dentry);
-            int32_t num_read = 0;
-            if(res >= 0) {
-                res = 0;
-                uint8_t buf[4096];
-                do {
-                    res = read_data(dentry.inode_num, num_read, buf, 4096);
-                    terminal_write(0, buf, res);
-                    num_read += res;
-                    terminal_read(0, input, 128);
-                } while(res > 0);
-            }
-        }
-    }
+    // {
+    //     uint8_t input[128];
+    //     int i;
+    //     for(i = 0; i < 63; i++) {
+    //         dentry_t dentry;
+    //         int32_t res = read_dentry_by_index(i, &dentry);
+    //         if(res >= 0) {
+    //             terminal_write(0, dentry.file_name, 32);
+    //             char c = '\n';
+    //             terminal_write(0, &c, 1);
+    //         }
+    //     }
+    //     {
+    //         dentry_t dentry;
+    //         int32_t res = read_dentry_by_name("frame0.txt", &dentry);
+    //         int32_t num_read = 0;
+    //         if(res >= 0) {
+    //             res = 0;
+    //             uint8_t buf[4096];
+    //             do {
+    //                 res = read_data(dentry.inode_num, num_read, buf, 4096);
+    //                 terminal_write(0, buf, res);
+    //                 num_read += res;
+    //             } while(res > 0);
+    //         }
+    //     }
+    //     {
+    //         dentry_t dentry;
+    //         int32_t res = read_dentry_by_name("frame1.txt", &dentry);
+    //         int32_t num_read = 0;
+    //         if(res >= 0) {
+    //             res = 0;
+    //             uint8_t buf[4096];
+    //             do {
+    //                 res = read_data(dentry.inode_num, num_read, buf, 4096);
+    //                 terminal_write(0, buf, res);
+    //                 num_read += res;
+    //             } while(res > 0);
+    //         }
+    //     }
+    //     {
+    //         dentry_t dentry;
+    //         int32_t res = read_dentry_by_name("verylargetextwithverylongname.tx", &dentry);
+    //         int32_t num_read = 0;
+    //         if(res >= 0) {
+    //             res = 0;
+    //             uint8_t buf[4096];
+    //             do {
+    //                 res = read_data(dentry.inode_num, num_read, buf, 4096);
+    //                 terminal_write(0, buf, res);
+    //                 num_read += res;
+    //                 terminal_read(0, input, 128);
+    //             } while(res > 0);
+    //         }
+    //     }
+    // }
 	/* Spin (nicely, so we don't chew up cycles) */
     uint8_t input[128];
 	for(;;) {
@@ -452,4 +450,3 @@ entry (unsigned long magic, unsigned long addr)
         terminal_read(0, input, 128);
  	}
 }
-

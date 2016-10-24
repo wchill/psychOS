@@ -535,5 +535,5 @@ test_interrupts(void)
 void
 test_rtc(void)
 {
-	VIDEO_PTR[(TERMINAL_COLUMNS - 1) << 1]++;
+	putc('1');
 }
