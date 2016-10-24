@@ -7,7 +7,8 @@
 #include "lib.h"
 #include "i8259.h"
 #include "debug.h"
-#include "keyboard.h"
+#include "ece391_fs.h"
+#include "terminal.h"
 #include "interrupt.h"
 #include "syscall.h"
 #include "rtc.h"
@@ -380,7 +381,7 @@ entry (unsigned long magic, unsigned long addr)
 	printf("Enabling Interrupts\n");
 	sti();
 
-    keyboard_open("stdin");
+    terminal_open("stdin");
 
 	/* Rodney: this is where we test RTC - Important: we MUST test rtc_read only after the sti() command above executes */
 	rtc_open();   // tests "rtc_open"
@@ -395,9 +396,9 @@ entry (unsigned long magic, unsigned long addr)
             dentry_t dentry;
             int32_t res = read_dentry_by_index(i, &dentry);
             if(res >= 0) {
-                keyboard_write(0, dentry.file_name, 32);
+                terminal_write(0, dentry.file_name, 32);
                 char c = '\n';
-                keyboard_write(0, &c, 1);
+                terminal_write(0, &c, 1);
             }
         }
         {
@@ -409,7 +410,7 @@ entry (unsigned long magic, unsigned long addr)
                 uint8_t buf[4096];
                 do {
                     res = read_data(dentry.inode_num, num_read, buf, 4096);
-                    keyboard_write(0, buf, res);
+                    terminal_write(0, buf, res);
                     num_read += res;
                 } while(res > 0);
             }
@@ -423,7 +424,7 @@ entry (unsigned long magic, unsigned long addr)
                 uint8_t buf[4096];
                 do {
                     res = read_data(dentry.inode_num, num_read, buf, 4096);
-                    keyboard_write(0, buf, res);
+                    terminal_write(0, buf, res);
                     num_read += res;
                 } while(res > 0);
             }
@@ -437,9 +438,9 @@ entry (unsigned long magic, unsigned long addr)
                 uint8_t buf[4096];
                 do {
                     res = read_data(dentry.inode_num, num_read, buf, 4096);
-                    keyboard_write(0, buf, res);
+                    terminal_write(0, buf, res);
                     num_read += res;
-                    keyboard_read(0, input, 128);
+                    terminal_read(0, input, 128);
                 } while(res > 0);
             }
         }
@@ -448,7 +449,7 @@ entry (unsigned long magic, unsigned long addr)
     uint8_t input[128];
 	for(;;) {
     	asm("hlt");
-        keyboard_read(0, input, 128);
+        terminal_read(0, input, 128);
  	}
 }
 

@@ -1,6 +1,6 @@
 #include "interrupt.h"
 #include "lib.h"
-#include "keyboard.h"
+#include "terminal.h"
 #include "x86_desc.h"
 
 void install_interrupt_handler(uint8_t interrupt_num, void *handler, uint8_t seg_selector, uint8_t dpl) {

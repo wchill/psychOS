@@ -3,7 +3,7 @@
  */
 
 #include "lib.h"
-#include "keyboard.h"
+#include "terminal.h"
 
 /* Standard printf().
  * Only supports the following format strings:
