@@ -352,7 +352,15 @@ void keyboard_handler() {
 
                 // Ctrl+L should clear the screen and place cursor at the top
                 if(ctrl_pressed && pressed_char == 'l') {
+                    int i;
+                    uint8_t current_buf[KEYBOARD_BUFFER_SIZE];
+                    uint32_t len = circular_buffer_peek((circular_buffer_t*) &keyboard_buffer, current_buf, KEYBOARD_BUFFER_SIZE);
+
                     clear_terminal();
+
+                    for(i = 0; i < len; i++) {
+                        putc(current_buf[i]);
+                    }
                 }
 
                 // Key combos aren't printable
@@ -413,7 +421,7 @@ uint32_t keyboard_read(int32_t fd, void *buf, int32_t nbytes) {
     cli_and_save(flags);
 
     // Read up to min(nbytes, number of bytes available in buffered line)
-    max_len = circular_buffer_find((circular_buffer_t*) &keyboard_buffer, '\n');
+    max_len = circular_buffer_find((circular_buffer_t*) &keyboard_buffer, '\n') + 1;
     if(max_len < nbytes) nbytes = max_len;
     retval = circular_buffer_get((circular_buffer_t*) &keyboard_buffer, buf, nbytes);
 
@@ -425,7 +433,6 @@ uint32_t keyboard_read(int32_t fd, void *buf, int32_t nbytes) {
 
 uint32_t keyboard_write(int32_t fd, const void *buf, int32_t nbytes) {
     int i;
-    int written = 0;
     uint32_t flags;
     cli_and_save(flags);
 
@@ -435,12 +442,18 @@ uint32_t keyboard_write(int32_t fd, const void *buf, int32_t nbytes) {
     }
 
     restore_flags(flags);
-    return written;
+    return nbytes;
 }
 
 uint32_t keyboard_close(int32_t fd) {
     // TODO: handle invalid file descriptor
+    uint32_t flags;
+    cli_and_save(flags);
 
-    disable_irq(KEYBOARD_IRQ);
+    circular_buffer_init((circular_buffer_t*) &keyboard_buffer, (void*) keyboard_buffer_internal, KEYBOARD_BUFFER_SIZE);
+    clear_terminal();
+
+    restore_flags(flags);
+    // disable_irq(KEYBOARD_IRQ);
     return 0;
 }

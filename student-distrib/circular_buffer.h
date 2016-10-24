@@ -16,6 +16,7 @@ void circular_buffer_init(circular_buffer_t *buf, void *data_buf, uint32_t max_l
 
 uint32_t circular_buffer_put(circular_buffer_t *buf, void *input_buf, uint32_t len);
 uint32_t circular_buffer_get(circular_buffer_t *buf, void *output_buf, uint32_t len);
+uint32_t circular_buffer_peek(circular_buffer_t *buf, void *output_buf, uint32_t len);
 
 uint32_t circular_buffer_put_byte(circular_buffer_t *buf, uint8_t b);
 uint32_t circular_buffer_get_byte(circular_buffer_t *buf, uint8_t *b);

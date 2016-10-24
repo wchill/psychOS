@@ -39,11 +39,29 @@ uint32_t circular_buffer_get(circular_buffer_t *buf, void *output_buf, uint32_t 
 	}
 
 	for(i = 0; i < len; i++) {
-		*(buf->head++) = *(out++);
+		*(out++) = *(buf->head++);
 		if(buf->head >= buf->data_end) buf->head = buf->data;
 	}
 
 	buf->current_len -= len;
+	return len;
+}
+
+// Copy data out of circular buffer without modifying buffer, up to len bytes (may be less)
+uint32_t circular_buffer_peek(circular_buffer_t *buf, void *output_buf, uint32_t len) {
+	int i;
+	uint8_t *out = (uint8_t*) output_buf;
+	uint8_t *addr = buf->head;
+
+	if (len > buf->current_len) {
+		len = buf->current_len;
+	}
+
+	for(i = 0; i < len; i++) {
+		*(out++) = *(addr++);
+		if(addr >= buf->data_end) addr = buf->data;
+	}
+
 	return len;
 }
 
