@@ -386,7 +386,7 @@ void keyboard_handler() {
 }
 
 // Keyboard syscalls
-uint32_t keyboard_open(const uint8_t *filename) {
+uint32_t keyboard_open(const int8_t *filename) {
     // TODO: Assign proper file descriptor
     uint32_t flags;
     cli_and_save(flags);

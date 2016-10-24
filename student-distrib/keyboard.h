@@ -41,7 +41,7 @@ void putc(uint8_t c);
 
 uint32_t keyboard_read(int32_t fd, void *buf, int32_t nbytes);
 uint32_t keyboard_write(int32_t fd, const void *buf, int32_t nbytes);
-uint32_t keyboard_open(const uint8_t *filename);
+uint32_t keyboard_open(const int8_t *filename);
 uint32_t keyboard_close(int32_t fd);
 
 #endif
