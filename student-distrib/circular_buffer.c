@@ -11,6 +11,13 @@ void circular_buffer_init(circular_buffer_t *buf, void *data_buf, uint32_t max_l
 	buf->tail = data_buf;
 }
 
+// Clear the circular buffer.
+void circular_buffer_clear(circular_buffer_t *buf) {
+	buf->current_len = 0;
+	buf->head = buf->data;
+	buf->tail = buf->data;
+}
+
 // Copy data from input buffer into circular buffer, up to len bytes (may be less).
 uint32_t circular_buffer_put(circular_buffer_t *buf, void *input_buf, uint32_t len) {
 	int i;

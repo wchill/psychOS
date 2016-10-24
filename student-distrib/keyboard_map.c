@@ -1,6 +1,12 @@
 #include "terminal.h"
 #include "keyboard_map.h"
 
+// Use shift/caps lock to construct a 2-bit index into this array.
+// 0 - Neither shift nor caps lock
+// 1 - Shift only
+// 2 - Caps lock only
+// 3 - Both shift and caps lock
+
 const uint8_t keyboard_map[4][KEYBOARD_SIZE] = {
 {
     0,          // 00 - Error code

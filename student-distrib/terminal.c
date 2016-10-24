@@ -2,10 +2,10 @@
 #include "terminal.h"
 #include "keyboard_map.h"
 #include "i8259.h"
+#include "tests.h"
 #include "types.h"
 #include "lib.h"
 #include "x86_desc.h"
-#include "tests.h"
 
 static volatile uint8_t keyboard_state[KEYBOARD_SIZE] = {0};
 static volatile uint8_t caps_lock_status = 0;
@@ -43,8 +43,10 @@ static inline void video_buffer_putc(uint8_t x, uint8_t y, uint8_t ch) {
 
 // Scrolls the screen vertically one row up.
 static void scroll_screen() {
+    // Move the last 3840 bytes (79 rows) forward 160 bytes (1 row), overwriting the first row
     memmove((uint16_t*) &video_buffer[VIDEO_INDEX(0, 0)], (uint16_t*) &video_buffer[VIDEO_INDEX(0, 1)], TERMINAL_COLUMNS * (TERMINAL_ROWS - 1) * 2);
 
+    // Set the last row to be blank
     uint16_t blank_word = ' ' | (TERMINAL_FOREGROUND_COLOR | TERMINAL_BACKGROUND_COLOR);
     memset_word((uint16_t*) &video_buffer[VIDEO_INDEX(0, TERMINAL_ROWS - 1)], blank_word, TERMINAL_COLUMNS);
 }
@@ -76,11 +78,16 @@ static uint8_t keyboard_putc(uint8_t ch) {
         circular_buffer_put_byte((circular_buffer_t*) &keyboard_buffer, ch);
 
         putc('\n');
+
+        // We read a new line
         keyboard_new_line_ready++;
 
     } else if(ch == '\t') {
-    // Tab, unimplemented
-        return 0;
+        putc(' ');
+        putc(' ');
+        putc(' ');
+        putc(' ');
+        return 1;
 
     } else if(ch > 0) {
     // All other characters considered printable
@@ -122,7 +129,7 @@ void putc(uint8_t ch) {
         }
     } else if (ch == '\t') {
         // Unimplemented
-    } else if (ch > 0) {
+    } else {
         // Echo to screen at cursor's current position
         video_buffer_putc(cursor_x, cursor_y, ch);
 
@@ -184,7 +191,8 @@ void keyboard_handler() {
                 uint8_t ctrl_pressed = keyboard_state[KEYBOARD_CTRL];
                 uint8_t alt_pressed = keyboard_state[KEYBOARD_ALT];
 
-                uint8_t shift_pressed = keyboard_state[KEYBOARD_LEFT_SHIFT] || keyboard_state[KEYBOARD_RIGHT_SHIFT];
+                // TODO: handle caps lock differently from shift (symbols should only work with shift, this will require another keymap)
+                uint8_t shift_pressed = keyboard_state[KEYBOARD_LEFT_SHIFT] || keyboard_state[KEYBOARD_RIGHT_SHIFT];;
 
                 int map_index = shift_pressed | (caps_lock_status << 1);
                 uint8_t pressed_char = keyboard_map[map_index][(int) keycode];
@@ -194,7 +202,12 @@ void keyboard_handler() {
                     caps_lock_status = !caps_lock_status;
                 }
 
-                // Ctrl+L should clear the screen and place cursor at the top
+                // Run test suite for Ctrl+1 to Ctrl+5
+                if (ctrl_pressed && pressed_char >= '1' && pressed_char <= '5'){
+                    test_suite(pressed_char - '0');
+                }
+
+                // Ctrl+L should clear the screen and place cursor at the top, but not clear the buffer
                 if(ctrl_pressed && pressed_char == 'l') {
                     int i;
                     uint8_t current_buf[KEYBOARD_BUFFER_SIZE];
@@ -207,11 +220,7 @@ void keyboard_handler() {
                     }
                 }
 
-                if (ctrl_pressed && pressed_char >= '1' && pressed_char <= '5'){
-                    test_suite(pressed_char - '0');
-                }
-
-                // Key combos aren't printable
+                // Ctrl/Alt key combos aren't printable
                 if(ctrl_pressed || alt_pressed) {
                     pressed_char = 0;
                 }
@@ -260,6 +269,7 @@ uint32_t terminal_read(int32_t fd, void *buf, int32_t nbytes) {
     if(max_len < nbytes) nbytes = max_len;
     retval = circular_buffer_get((circular_buffer_t*) &keyboard_buffer, buf, nbytes);
 
+    // We read one new line
     keyboard_new_line_ready--;
     
     restore_flags(flags);
@@ -285,20 +295,10 @@ uint32_t terminal_close(int32_t fd) {
     uint32_t flags;
     cli_and_save(flags);
 
-    circular_buffer_init((circular_buffer_t*) &keyboard_buffer, (void*) keyboard_buffer_internal, KEYBOARD_BUFFER_SIZE);
+    circular_buffer_clear((circular_buffer_t*) &keyboard_buffer);
     clear_terminal();
 
     restore_flags(flags);
     // disable_irq(KEYBOARD_IRQ);
     return 0;
-}
-
-// copy keyboard state to buf
-void get_keyboard_state(uint8_t *buf) {
-    uint32_t flags;
-    cli_and_save(flags);
-
-    memcpy(buf, (uint8_t*) keyboard_state, KEYBOARD_BUFFER_SIZE);
-
-    restore_flags(flags);
 }

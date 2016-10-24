@@ -3,6 +3,9 @@
 
 #include "types.h"
 
+#define MAX_FILE_NAME_LENGTH 32
+#define FS_BLOCK_SIZE (1 << 12)
+
 typedef struct dentry_t {
 	char file_name[32];
 	uint32_t file_type;
@@ -48,5 +51,7 @@ void ece391_fs_init(void *ptr);
 int32_t read_dentry_by_name (const uint8_t *fname, dentry_t* dentry);
 int32_t read_dentry_by_index (uint32_t index, dentry_t *dentry);
 int32_t read_data (uint32_t inode, uint32_t offset, uint8_t *buf, uint32_t length);
+
+int32_t get_file_size (uint32_t inode);
 
 #endif

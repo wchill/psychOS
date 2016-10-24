@@ -106,7 +106,7 @@ int32_t rtc_open() {
 	// Need to initialize RTC before enabling IRQ
 	install_interrupt_handler(IRQ_INT_NUM(RTC_IRQ), rtc_handler_wrapper, KERNEL_CS, PRIVILEGE_KERNEL);
 	enable_irq(RTC_IRQ);
-
+	
 	rtc_write(MIN_FREQ);
 
 	return 0;

@@ -387,62 +387,50 @@ entry (unsigned long magic, unsigned long addr)
     //rtc_read(); // tests "rtc_read" since code doesn't infinitely loop here, that means the function returned.
 
 	/* Execute the first program (`shell') ... */
-    // {
-    //     uint8_t input[128];
-    //     int i;
-    //     for(i = 0; i < 63; i++) {
-    //         dentry_t dentry;
-    //         int32_t res = read_dentry_by_index(i, &dentry);
-    //         if(res >= 0) {
-    //             terminal_write(0, dentry.file_name, 32);
-    //             char c = '\n';
-    //             terminal_write(0, &c, 1);
-    //         }
-    //     }
-    //     {
-    //         dentry_t dentry;
-    //         int32_t res = read_dentry_by_name("frame0.txt", &dentry);
-    //         int32_t num_read = 0;
-    //         if(res >= 0) {
-    //             res = 0;
-    //             uint8_t buf[4096];
-    //             do {
-    //                 res = read_data(dentry.inode_num, num_read, buf, 4096);
-    //                 terminal_write(0, buf, res);
-    //                 num_read += res;
-    //             } while(res > 0);
-    //         }
-    //     }
-    //     {
-    //         dentry_t dentry;
-    //         int32_t res = read_dentry_by_name("frame1.txt", &dentry);
-    //         int32_t num_read = 0;
-    //         if(res >= 0) {
-    //             res = 0;
-    //             uint8_t buf[4096];
-    //             do {
-    //                 res = read_data(dentry.inode_num, num_read, buf, 4096);
-    //                 terminal_write(0, buf, res);
-    //                 num_read += res;
-    //             } while(res > 0);
-    //         }
-    //     }
-    //     {
-    //         dentry_t dentry;
-    //         int32_t res = read_dentry_by_name("verylargetextwithverylongname.tx", &dentry);
-    //         int32_t num_read = 0;
-    //         if(res >= 0) {
-    //             res = 0;
-    //             uint8_t buf[4096];
-    //             do {
-    //                 res = read_data(dentry.inode_num, num_read, buf, 4096);
-    //                 terminal_write(0, buf, res);
-    //                 num_read += res;
-    //                 terminal_read(0, input, 128);
-    //             } while(res > 0);
-    //         }
-    //     }
-    // }
+	/*
+    {
+        uint8_t input[128];
+        int i;
+        for(i = 0; i < 63; i++) {
+            dentry_t dentry;
+            int32_t res = read_dentry_by_index(i, &dentry);
+            if(res >= 0) {
+                terminal_write(0, dentry.file_name, 32);
+                char c = '\n';
+                terminal_write(0, &c, 1);
+            }
+        }
+        {
+            dentry_t dentry;
+            int32_t res = read_dentry_by_name("verylargetextwithverylongname.tx", &dentry);
+            int32_t num_read = 0;
+            if(res >= 0) {
+                res = 0;
+                uint8_t buf[4096];
+                do {
+                    res = read_data(dentry.inode_num, num_read, buf, 4096);
+                    terminal_write(0, buf, res);
+                    num_read += res;
+                } while(res > 0);
+            }
+        }
+        terminal_read(0, input, 128);
+        {
+            dentry_t dentry;
+            int32_t res = read_dentry_by_name("shell", &dentry);
+            int32_t num_read = 0;
+            if(res >= 0) {
+                res = 0;
+                uint8_t buf[4096];
+                do {
+                    res = read_data(dentry.inode_num, num_read, buf, 4096);
+                    terminal_write(0, buf, res);
+                    num_read += res;
+                } while(res > 0);
+            }
+        }
+    }
+    */
 	/* Spin (nicely, so we don't chew up cycles) */
     uint8_t input[128];
 	for(;;) {

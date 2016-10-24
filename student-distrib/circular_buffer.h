@@ -13,6 +13,7 @@ typedef struct circular_buffer_t {
 } circular_buffer_t;
 
 void circular_buffer_init(circular_buffer_t *buf, void *data_buf, uint32_t max_len);
+void circular_buffer_clear(circular_buffer_t *buf);
 
 uint32_t circular_buffer_put(circular_buffer_t *buf, void *input_buf, uint32_t len);
 uint32_t circular_buffer_get(circular_buffer_t *buf, void *output_buf, uint32_t len);
