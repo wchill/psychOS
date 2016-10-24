@@ -360,6 +360,15 @@ entry (unsigned long magic, unsigned long addr)
 
 	/* Initialize devices, memory, filesystem, enable device interrupts on the
 	 * PIC, any other initialization stuff... */
+    {
+        // Initialize file system
+        // Seems like we don't need to worry about mapping pages for the FS?
+        // The FS is loaded into memory somewhere above 0x400000 but less than 0x800000,
+        // so it's still within the kernel's 4MB page
+        printf("Initializing ECE391 File System\n");
+        module_t* mod = (module_t*) mbi->mods_addr;
+        ece391_fs_init((void*) mod->mod_start);
+    }
 	
 	printf("Initializing Paging\n");
 	initialize_paging();
@@ -379,7 +388,62 @@ entry (unsigned long magic, unsigned long addr)
 	rtc_read();   // since code doesn't infinitely loop here, that means the function returned.   // CODE CURRENTLY INFINITE LOOPS HERE
 
 	/* Execute the first program (`shell') ... */
-
+    {
+        uint8_t input[128];
+        int i;
+        for(i = 0; i < 63; i++) {
+            dentry_t dentry;
+            int32_t res = read_dentry_by_index(i, &dentry);
+            if(res >= 0) {
+                keyboard_write(0, dentry.file_name, 32);
+                char c = '\n';
+                keyboard_write(0, &c, 1);
+            }
+        }
+        {
+            dentry_t dentry;
+            int32_t res = read_dentry_by_name("frame0.txt", &dentry);
+            int32_t num_read = 0;
+            if(res >= 0) {
+                res = 0;
+                uint8_t buf[4096];
+                do {
+                    res = read_data(dentry.inode_num, num_read, buf, 4096);
+                    keyboard_write(0, buf, res);
+                    num_read += res;
+                } while(res > 0);
+            }
+        }
+        {
+            dentry_t dentry;
+            int32_t res = read_dentry_by_name("frame1.txt", &dentry);
+            int32_t num_read = 0;
+            if(res >= 0) {
+                res = 0;
+                uint8_t buf[4096];
+                do {
+                    res = read_data(dentry.inode_num, num_read, buf, 4096);
+                    keyboard_write(0, buf, res);
+                    num_read += res;
+                } while(res > 0);
+            }
+        }
+        {
+            dentry_t dentry;
+            int32_t res = read_dentry_by_name("verylargetextwithverylongname.tx", &dentry);
+            int32_t num_read = 0;
+            if(res >= 0) {
+                res = 0;
+                uint8_t buf[4096];
+                do {
+                    res = read_data(dentry.inode_num, num_read, buf, 4096);
+                    keyboard_write(0, buf, res);
+                    num_read += res;
+                    keyboard_read(0, input, 128);
+                } while(res > 0);
+            }
+        }
+    }
 	/* Spin (nicely, so we don't chew up cycles) */
     uint8_t input[128];
 	for(;;) {
