@@ -3,7 +3,7 @@
  */
 
 #include <arch/x86/i8259.h>
-#include "lib.h"
+#include <lib/lib.h>
 
 /* Interrupt masks to determine which interrupts are enabled and disabled */
 uint8_t master_mask = EIGHT_BIT_MASK; /* IRQs 0-7  */
@@ -18,23 +18,23 @@ uint8_t slave_mask = EIGHT_BIT_MASK;  /* IRQs 8-15 */
 void
 i8259_init(void)
 {
-    outb(master_mask, MASTER_8259_PORT_DATA);    /* mask all of 8259A-1 */
-    outb(slave_mask,  SLAVE_8259_PORT_DATA);     /* mask all of 8259A-2 */
+    outportb(MASTER_8259_PORT_DATA, master_mask);    /* mask all of 8259A-1 */
+    outportb(SLAVE_8259_PORT_DATA, slave_mask);     /* mask all of 8259A-2 */
 
     /* Instructions for Master */
-    outb(ICW1,        MASTER_8259_PORT_COMMAND); /* ICW1: select 8259A-1 init */
-    outb(ICW2_MASTER, MASTER_8259_PORT_DATA);    /* ICW2: 8259A-1 IR0-7 mapped to 0x20-0x27 */
-    outb(ICW3_MASTER, MASTER_8259_PORT_DATA);    /* 8259A-1 (the master) has a slave on IR2 */
-    outb(ICW4,        MASTER_8259_PORT_DATA);    /* master expects normal EOI */
+    outportb(MASTER_8259_PORT_COMMAND, ICW1); /* ICW1: select 8259A-1 init */
+    outportb(MASTER_8259_PORT_DATA, ICW2_MASTER);    /* ICW2: 8259A-1 IR0-7 mapped to 0x20-0x27 */
+    outportb(MASTER_8259_PORT_DATA);    /* 8259A-1 (the master, ICW3_MASTER) has a slave on IR2 */
+    outportb(MASTER_8259_PORT_DATA, ICW4);    /* master expects normal EOI */
 
     /* Instructions for Slave */
-    outb(ICW1,       SLAVE_8259_PORT_COMMAND);   /* ICW1: select 8259A-2 init */      
-    outb(ICW2_SLAVE, SLAVE_8259_PORT_DATA);      /* ICW2: 8259A-2 IR0-7 mapped to 0x28-0x2f */
-    outb(ICW3_SLAVE, SLAVE_8259_PORT_DATA);      /* 8259A-2 is a slave on master's IR2 */
-    outb(ICW4,       SLAVE_8259_PORT_DATA);      /* (slave's support for AEOI in flat mode is to be investigated) */
+    outportb(SLAVE_8259_PORT_COMMAND, ICW1);   /* ICW1: select 8259A-2 init */      
+    outportb(SLAVE_8259_PORT_DATA, ICW2_SLAVE);      /* ICW2: 8259A-2 IR0-7 mapped to 0x28-0x2f */
+    outportb(SLAVE_8259_PORT_DATA, ICW3_SLAVE);      /* 8259A-2 is a slave on master's IR2 */
+    outportb(SLAVE_8259_PORT_DATA);      /* (slave's support for AEOI in flat mode is to be investigated, ICW4) */
 
     master_mask &= (~ICW3_MASTER);               // Rodney: this enables IRQ 2 so that slave works.
-    outb(master_mask, MASTER_8259_PORT_DATA);
+    outportb(MASTER_8259_PORT_DATA, master_mask);
 }
 
 /* Enable (unmask) the specified IRQ */
@@ -43,11 +43,11 @@ enable_irq(uint32_t irq_num)
 {
     if (irq_num & SLAVE_BIT){
         slave_mask &= ~(1 << (irq_num - IRQ_MASTER_OFFSET));
-        outb(slave_mask, SLAVE_8259_PORT_DATA);
+        outportb(SLAVE_8259_PORT_DATA, slave_mask);
     }
     else{
         master_mask &= ~(1 << irq_num);
-        outb(master_mask, MASTER_8259_PORT_DATA);
+        outportb(MASTER_8259_PORT_DATA, master_mask);
     }
 }
 
@@ -57,11 +57,11 @@ disable_irq(uint32_t irq_num)
 {
     if (irq_num & SLAVE_BIT){
         slave_mask |= (1 << (irq_num - IRQ_MASTER_OFFSET));
-        outb(slave_mask, SLAVE_8259_PORT_DATA);
+        outportb(SLAVE_8259_PORT_DATA, slave_mask);
     }
     else{
         master_mask |=  (1 << irq_num);
-        outb(master_mask, MASTER_8259_PORT_DATA);
+        outportb(MASTER_8259_PORT_DATA, master_mask);
     }
 }
 
@@ -70,9 +70,9 @@ void
 send_eoi(uint32_t irq_num)
 {
     if (irq_num & SLAVE_BIT){
-        outb(EOI | (irq_num - IRQ_MASTER_OFFSET), SLAVE_8259_PORT_COMMAND); 
-        outb(EOI | 2, MASTER_8259_PORT_COMMAND); // 2 represents Slave connected to IRQ 2
+        outportb(SLAVE_8259_PORT_COMMAND, EOI | (irq_num - IRQ_MASTER_OFFSET)); 
+        outportb(MASTER_8259_PORT_COMMAND, EOI | 2); // 2 represents Slave connected to IRQ 2
     }
     else
-        outb(EOI | irq_num, MASTER_8259_PORT_COMMAND);
+        outportb(MASTER_8259_PORT_COMMAND, EOI | irq_num);
 }

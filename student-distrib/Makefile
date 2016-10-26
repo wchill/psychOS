@@ -10,7 +10,7 @@ ASFLAGS+=
 LDFLAGS+=-nostdlib -static
 CC=gcc
 
-# Use a cross compiling toolchain
+# Use a cross compiling toolchain if available (only when not compiling in devel/lab machines)
 TARGET=i686-elf
 CROSS_CC := $(shell command -v $(TARGET)-gcc 2> /dev/null)
 

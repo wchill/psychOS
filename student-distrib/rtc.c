@@ -1,10 +1,9 @@
 #include <rtc.h>
-#include <lib.h>
 #include <arch/x86/i8259.h>
-#include <arch/x86/io.h>
+#include <types.h>
+#include <lib.h>
 #include <arch/x86/x86_desc.h>
 #include <arch/x86/interrupt.h>
-#include <types.h>
 
 /* References:
 	http://wiki.osdev.org/RTC#Programming_the_RTC                            (this is the main reference we used)
@@ -13,19 +12,6 @@
 */
 
 static volatile int rtc_tick_flag = 0;	/* Flag that waits for RTC tick. 1 = waiting for tick. 0 = tick occured */
-
-/*
-* void test_rtc(void)
-*   Inputs: void
-*   Return Value: void
-*	Function: increment video memory (just the top-right of the screen), to show RTC works.
-*/
-
-static void
-test_rtc(void)
-{
-	putc('1');
-}
 
 /*
  * rtc_handler
