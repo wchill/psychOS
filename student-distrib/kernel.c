@@ -2,17 +2,17 @@
  * vim:ts=4 noexpandtab
  */
 
-#include "multiboot.h"
-#include "x86_desc.h"
-#include "lib.h"
-#include "i8259.h"
-#include "debug.h"
-#include "ece391_fs.h"
-#include "terminal.h"
-#include "interrupt.h"
-#include "syscall.h"
-#include "rtc.h"
-#include "tests.h" // added for 3.2
+#include <arch/x86/multiboot.h>
+#include <arch/x86/x86_desc.h>
+#include <lib.h>
+#include <arch/x86/i8259.h>
+#include <debug.h>
+#include <fs/ece391_fs.h>
+#include <tty/terminal.h>
+#include <arch/x86/interrupt.h>
+#include <syscall.h>
+#include <rtc.h>
+#include <tests.h> // added for 3.2
 
 /* Macros. */
 /* Check if the bit BIT in FLAGS is set. */

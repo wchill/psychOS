@@ -10,15 +10,25 @@ ASFLAGS+=
 LDFLAGS+=-nostdlib -static
 CC=gcc
 
+# Use a cross compiling toolchain
+TARGET=i686-elf
+CROSS_CC := $(shell command -v $(TARGET)-gcc 2> /dev/null)
+
+ifdef CROSS_CC
+CC=$(TARGET)-gcc
+endif
+
 #If you have any .h files in another directory, add -I<dir> to this line
-CPPFLAGS+=-nostdinc -g
+CPPFLAGS+=-nostdinc -g -Iinclude
 
 # This generates the list of source files
-SRC=$(wildcard *.S) $(wildcard *.c) $(wildcard */*.S) $(wildcard */*.c)
+# SRC=$(wildcard *.S) $(wildcard *.c) $(wildcard */*.S) $(wildcard */*.c)
+SOURCEDIR=.
+SRC=$(shell find $(SOURCEDIR) -name '*.c') $(shell find $(SOURCEDIR) -name '*.S')
 
 # This generates the list of .o files. The order matters, boot.o must be first
-OBJS=boot.o
-OBJS+=$(filter-out boot.o,$(patsubst %.S,%.o,$(filter %.S,$(SRC))))
+OBJS=arch/x86/boot.o
+OBJS+=$(filter-out %/boot.o,$(patsubst %.S,%.o,$(filter %.S,$(SRC))))
 OBJS+=$(patsubst %.c,%.o,$(filter %.c,$(SRC)))
 
 bootimg: Makefile $(OBJS)
