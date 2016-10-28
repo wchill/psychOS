@@ -2,7 +2,7 @@
 
 #include <fs/fs.h>
 #include <fs/ece391_fs.h>
-#include <lib.h>
+#include <lib/lib.h>
 
 // File syscalls
 

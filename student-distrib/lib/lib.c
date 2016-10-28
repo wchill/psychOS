@@ -2,7 +2,7 @@
  * vim:ts=4 noexpandtab
  */
 
-#include <lib.h>
+#include <lib/lib.h>
 #include <tty/terminal.h>
 
 /* Standard printf().

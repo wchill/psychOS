@@ -1,12 +1,12 @@
-#include <tests.h>
+#include <kernel/tests.h>
 #include <types.h>
 #include <fs/ece391_fs.h>
-#include <rtc.h>
+#include <drivers/rtc.h>
 #include <arch/x86/i8259.h>
 #include <tty/terminal.h>
 #include <tty/keyboard_map.h>
-#include <lib.h>
-#include <circular_buffer.h>
+#include <lib/lib.h>
+#include <lib/circular_buffer.h>
 
 static volatile uint16_t htz = 1;
 static uint16_t index_num = 0;

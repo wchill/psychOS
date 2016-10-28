@@ -1,5 +1,5 @@
 #include <arch/x86/interrupt.h>
-#include "lib.h"
+#include <lib/lib.h>
 #include <tty/terminal.h>
 #include <arch/x86/x86_desc.h>
 

@@ -1,10 +1,10 @@
-#include <circular_buffer.h>
+#include <lib/circular_buffer.h>
 #include <tty/terminal.h>
 #include <tty/keyboard_map.h>
 #include <arch/x86/i8259.h>
-#include <tests.h>
+#include <kernel/tests.h>
 #include <types.h>
-#include <lib.h>
+#include <lib/lib.h>
 #include <arch/x86/x86_desc.h>
 #include <arch/x86/io.h>
 

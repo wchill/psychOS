@@ -4,15 +4,15 @@
 
 #include <arch/x86/multiboot.h>
 #include <arch/x86/x86_desc.h>
-#include <lib.h>
+#include <lib/lib.h>
 #include <arch/x86/i8259.h>
-#include <debug.h>
+#include <kernel/debug.h>
 #include <fs/ece391_fs.h>
 #include <tty/terminal.h>
 #include <arch/x86/interrupt.h>
-#include <syscall.h>
-#include <rtc.h>
-#include <tests.h> // added for 3.2
+#include <kernel/syscall.h>
+#include <drivers/rtc.h>
+#include <kernel/tests.h> // added for 3.2
 
 /* Macros. */
 /* Check if the bit BIT in FLAGS is set. */

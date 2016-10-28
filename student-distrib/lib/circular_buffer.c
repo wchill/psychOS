@@ -1,5 +1,5 @@
-#include "circular_buffer.h"
-#include "lib.h"
+#include <lib/circular_buffer.h>
+#include <lib/lib.h>
 
 // Initialize the circular buffer and use the given backing memory.
 void circular_buffer_init(circular_buffer_t *buf, void *data_buf, uint32_t max_len) {

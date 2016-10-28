@@ -1,7 +1,7 @@
 // Filesystem driver for the ECE391 filesystem.
 
 #include <fs/ece391_fs.h>
-#include <lib.h>
+#include <lib/lib.h>
 
 static boot_block_t *fs_boot_ptr;
 static inode_block_t *fs_inode_ptr;

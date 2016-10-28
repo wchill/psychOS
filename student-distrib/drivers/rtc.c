@@ -1,5 +1,5 @@
-#include <rtc.h>
-#include <lib.h>
+#include <drivers/rtc.h>
+#include <lib/lib.h>
 #include <arch/x86/i8259.h>
 #include <arch/x86/io.h>
 #include <arch/x86/x86_desc.h>
