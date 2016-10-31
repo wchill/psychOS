@@ -7,14 +7,30 @@ static boot_block_t *fs_boot_ptr;
 static inode_block_t *fs_inode_ptr;
 static data_block_t *fs_data_ptr;
 
-// Initialize the file system (just keeping track of various pointers)
+/*
+ * ece391_fs_init
+ *   DESCRIPTION:  Initialize the file system (just keeping track of various pointers)
+ *   INPUTS:       ptr - A pointer to our file system (where 1st entry is boot block)
+ *   OUTPUTS:      none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: Initializes static variables for File System
+ */ 
 void ece391_fs_init(void *ptr) {
 	fs_boot_ptr = (boot_block_t*) ptr;
 	fs_inode_ptr = (inode_block_t*) fs_boot_ptr + 1;
 	fs_data_ptr = (data_block_t*) fs_inode_ptr + fs_boot_ptr->num_inodes;
 }
 
-// Read the contents of a directory entry based on file name.
+/*
+ * read_dentry_by_name
+ *   DESCRIPTION:  Read the contents of a directory entry based on file name.
+ *   INPUTS:       fname  - The filename that we are searching for.
+                   dentry - The directory entry that we will save data to.
+ *   OUTPUTS:      none
+ *   RETURN VALUE: -1 on failure
+ *				    0 on success
+ *   SIDE EFFECTS: Fills dentry with data
+ */ 
 int32_t read_dentry_by_name(const uint8_t *fname, dentry_t *dentry) {
 	uint32_t i;
 
@@ -36,7 +52,16 @@ int32_t read_dentry_by_name(const uint8_t *fname, dentry_t *dentry) {
 	return -1;
 }
 
-// Read the contents of a directory entry based on entry index.
+/*
+ * read_dentry_by_index
+ *   DESCRIPTION:  Read the contents of a directory entry based on entry index.
+ *   INPUTS:       index  - The index (in the directory entries in boot block).
+                   dentry - The directory entry that we will save data to.
+ *   OUTPUTS:      none
+ *   RETURN VALUE: -1 on failure
+ *				    0 on success
+ *   SIDE EFFECTS: Fills dentry with data
+ */ 
 int32_t read_dentry_by_index(uint32_t index, dentry_t *dentry) {
 	// Check valid directory entry index
 	if (index >= fs_boot_ptr->num_directory_entries) return -1;
@@ -51,10 +76,28 @@ int32_t read_dentry_by_index(uint32_t index, dentry_t *dentry) {
 	return 0;
 }
 
-// Read the contents of a FS block into a buffer.
+/*
+ * read_block
+ * Read the contents of a FS block into a buffer.
+ * 
+ * @param block_index The index of the block in the filesystem to read from
+ * @param offset      number of bytes into the block to start reading from.
+ * @param buf         pointer to buffer to copy data to.
+ * @param length      max number of bytes to copy into buffer.
+ * 
+ * @returns The number of bytes written, or -1 if an error occurred.
+ */
 static int32_t read_block(uint32_t block_index, uint32_t offset, uint8_t *buf, uint32_t length) {
 	// Check valid block index
 	if(block_index >= fs_boot_ptr->num_data_blocks) return -1;
+
+	// Check for valid offset
+	if(offset >= FS_BLOCK_SIZE) return -1;
+
+	// Cap the length to not go beyond the end of the block
+	if(length > FS_BLOCK_SIZE - offset) {
+		length = FS_BLOCK_SIZE - offset;
+	}
 
 	// Copy from data block into buffer
 	data_block_t *data_block = &fs_data_ptr[block_index];
@@ -62,7 +105,17 @@ static int32_t read_block(uint32_t block_index, uint32_t offset, uint8_t *buf, u
 	return length;
 }
 
-// Given an inode, read the contents of a file into a buffer.
+/*
+ * read_data
+ * Given an inode, read the contents of a file into a buffer.
+ * 
+ * @param inode   Represents which file we want to read from
+ * @param offset  number of bytes into the file to start reading from.
+ * @param buf     pointer to buffer to copy data to.
+ * @param length  max number of bytes to copy into buffer.
+ * 
+ * @returns The number of bytes written, or -1 if an error occurred.
+ */
 int32_t read_data(uint32_t inode, uint32_t offset, uint8_t *buf, uint32_t length) {
 	// Check valid inode
 	if (inode >= fs_boot_ptr->num_inodes) return -1;
@@ -111,7 +164,14 @@ int32_t read_data(uint32_t inode, uint32_t offset, uint8_t *buf, uint32_t length
 	return bytes_written;
 }
 
-// Given an inode, return the file size of a file.
+/*
+ * get_file_size
+ * Given an inode, return the file size of a file.
+ * 
+ * @param inode   Represents the file we want to get the size (in bytes of)
+ * 
+ * @returns The file size in bytes, or -1 if an error occurred.
+ */
 int32_t get_file_size(uint32_t inode) {
 	if (inode >= fs_boot_ptr->num_inodes) return -1;
 

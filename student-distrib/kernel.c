@@ -88,12 +88,8 @@ extern void enable_paging(pd_entry *table_ptr);
 
 /*
  * initalize_paging
- *   DESCRIPTION:  Initializes paging by filling PD and PT kernel arrays
- *   INPUTS:       none
- *   OUTPUTS:      none
- *   RETURN VALUE: none
- *   SIDE EFFECTS: fills Page Directory and Page Table with appropriate values
- */   
+ * fills Page Directory and Page Table with appropriate values
+ */ 
 void initialize_paging() {
 
 	/* Set up 0th Page Table Entry (0 MB to 4 MB) */
@@ -303,7 +299,7 @@ entry (unsigned long magic, unsigned long addr)
 
 	/* Set up the IDT */
 	{
-		void (*handlers[NUM_RESERVED_VEC]) (void);
+		void (*handlers[NUM_RESERVED_VEC]) (void); //array of function pointers. These functions take no parameters and return nothing.
 		int i;
 
 		for(i = 0; i < NUM_VEC; i++) {

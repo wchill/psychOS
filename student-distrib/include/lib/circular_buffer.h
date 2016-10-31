@@ -6,7 +6,7 @@
 typedef struct circular_buffer_t {
 	uint32_t max_len;
 	uint32_t current_len;
-	uint8_t *data;
+	uint8_t *data_start;
 	uint8_t *data_end;
 	uint8_t *head;
 	uint8_t *tail;

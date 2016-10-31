@@ -7,11 +7,13 @@
 // File syscalls
 
 /*
-int32_t read_dentry_by_name (const uint8_t *fname, dentry_t* dentry);
-int32_t read_dentry_by_index (uint32_t index, dentry_t *dentry);
-int32_t read_data (uint32_t inode, uint32_t offset, uint8_t *buf, uint32_t length);
-*/
-
+ * file_open
+ * For now, just finds the file represents by filename but does nothing with it.
+ * 
+ * @param filename   the name of the file to open
+ * 
+ * @returns For now, returns -1. Will eventually return file descriptor (FD)
+ */
 int32_t file_open(const uint8_t *filename) {
 	// TODO: Return file FD
 	dentry_t dentry;
@@ -22,10 +24,28 @@ int32_t file_open(const uint8_t *filename) {
 	return -1;
 }
 
+/*
+ * file_close
+ * For now, does nothing and just returns -1.
+ * 
+ * @param fd   the file descriptor of the file to close
+ * 
+ * @returns For now, returns -1.
+ */
 int32_t file_close(int32_t fd) {
 	return -1;
 }
 
+/*
+ * file_read
+ * Reads nbytes from file represent by fd to provided buffer
+ * 
+ * @param fd      the file descriptor of the file to read.
+ * @param buf     the buffer to read nbytes into.
+ * @param nbytes  the number of bytes to read into the provided buffer.
+ * 
+ * @returns       number of bytes read (may be less than nbytes), or -1 for failure
+ */
 int32_t file_read(int32_t fd, void *buf, int32_t nbytes) {
 	// TODO: Handle file descriptor
 
@@ -42,11 +62,32 @@ int32_t file_read(int32_t fd, void *buf, int32_t nbytes) {
 	return res;
 }
 
+/*
+ * file_write
+ * For now, does nothing and just returns -1.
+ * 
+ * @param fd      the file descriptor of the file to write to.
+ * @param buf     the buffer to read nbytes from.
+ * @param nbytes  the number of bytes to write from buffer to file.
+ * 
+ * @returns       number of bytes written (may be less than nbytes), or -1 for failure
+ */
 int32_t file_write(int32_t fd, const void *buf, int32_t nbytes) {
 	return -1;
 }
 
-// Test code for Checkpoint 3.2: to be removed later
+
+/* Test code for Checkpoint 3.2: to be removed later
+ *
+ * read_file_by_name
+ * Reads nbytes from a file into a buffer.
+ * 
+ * @param filename  Used to find the file in our file system
+ * @param buf       the buffer to read nbytes into.
+ * @param nbytes    the number of bytes to read into the provided buffer.
+ * 
+ * @returns         number of bytes read (may be less than nbytes), or -1 for failure
+ */
 int32_t read_file_by_name(char *filename, void *buf, uint32_t nbytes) {
     dentry_t dentry;
     int32_t res = read_dentry_by_name((uint8_t*) filename, &dentry);
@@ -60,15 +101,41 @@ int32_t read_file_by_name(char *filename, void *buf, uint32_t nbytes) {
 
 // Directory syscalls
 
+/*
+ * dir_open
+ * For now, just returns -1.
+ * 
+ * @param filename   the name of the directory entry to open
+ * 
+ * @returns For now, returns -1. Will eventually return file descriptor (FD)
+ */
 int32_t dir_open(const uint8_t *filename) {
 	// TODO: Return directory FD
 	return -1;
 }
 
+/*
+ * dir_close
+ * For now, does nothing and just returns -1.
+ * 
+ * @param fd   the file descriptor of the directory to close
+ * 
+ * @returns For now, returns -1.
+ */
 int32_t dir_close(int32_t fd) {
 	return -1;
 }
 
+/*
+ * dir_read
+ * For now, reads the data at index 0. Will eventually use file descriptor.
+ * 
+ * @param fd      the file descriptor of the directory to read.
+ * @param buf     the buffer to read nbytes into.
+ * @param nbytes  the number of bytes to read into the provided buffer.
+ * 
+ * @returns       number of bytes read (may be less than nbytes), or -1 for failure
+ */
 int32_t dir_read(int32_t fd, void *buf, int32_t nbytes) {
 	// TODO: Tie the index to the file descriptor
 	static int index_num = 0;
@@ -79,12 +146,22 @@ int32_t dir_read(int32_t fd, void *buf, int32_t nbytes) {
 
     index_num++;
 
-    int num_bytes_to_copy = 32;    // 32 is number of bytes to copy
+    int num_bytes_to_copy = MAX_FILE_NAME_LENGTH;
     if(num_bytes_to_copy > nbytes) num_bytes_to_copy = nbytes;
     memcpy(buf, dentry.file_name, num_bytes_to_copy);
     return num_bytes_to_copy;
 }
 
+/*
+ * dir_write
+ * For now, does nothing and just returns -1.
+ * 
+ * @param fd      the file descriptor of the file to write to.
+ * @param buf     the buffer to read nbytes from.
+ * @param nbytes  the number of bytes to write from buffer to file.
+ * 
+ * @returns       number of bytes written (may be less than nbytes), or -1 for failure
+ */
 int32_t dir_write(int32_t fd, const void *buf, int32_t nbytes) {
 	return -1;
 }

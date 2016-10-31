@@ -48,55 +48,6 @@ void rtc_handler() {
 }
 
 /*
- * rtc_read
- *   DESCRIPTION:  Returns (only when) the next RTC tick occurs
- *   INPUTS:       none
- *   OUTPUTS:      none
- *   RETURN VALUE: 0
- *   SIDE EFFECTS: none
- */ 
-int32_t rtc_read() {
-	rtc_tick_flag = 1;			// set flag to wait for RTC tick
-	while(rtc_tick_flag);	// wait for RTC tick
-	return 0;					// acknowledge RTC tick
-}
-
-/*
- * rtc_write
- *   DESCRIPTION:  Changes the frequency of the RTC
- *   INPUTS:       htz - frequency in Hz. Must be between 1 and 1024 inclusive, and also be a power of 2
- *   OUTPUTS:      none
- *   RETURN VALUE: -1 on failure
- *				    0 on success
- *   SIDE EFFECTS: changes the frequency of the RTC
- */ 
-int32_t rtc_write(uint32_t htz) {
-	int     temp = htz;						// temp variable to calculate rate
-	uint8_t rate = 15;						// rate passed to the RTC. Rate of 15 corresponds to 2 Hz. We use formula: htz = 32768 >> (rate - 1)
-	char    prev;							// just a temporary variable
-
-	/* Check for valid input */
-	if( htz < MIN_FREQ || htz > MAX_FREQ ) 
-		return -1;
-	if( (htz & (htz-1)) != 0)  				// fancy & efficient way to check if htz is a power of 2
-		return -1;			
-
-	/* Calculate appropriate 'rate' value for the htz we want */
-	while (temp != MIN_FREQ){
-		temp >>= 1;							// divides by 2
-		rate--;
-	}
-
-	// set the interrupt rate
-	outportb(RTC_STATUS_PORT, RTC_DISABLE_NMI | RTC_REG_A);
-	prev = inportb(RTC_DATA_PORT);								// get initial value of register A
-	outportb(RTC_STATUS_PORT, RTC_DISABLE_NMI | RTC_REG_A);		// reset index to A
-	outportb(RTC_DATA_PORT, (prev & 0xF0) | rate);				// write only our rate to A. Note, rate is the bottom 4 bits, so keep the top 4 bits. 0xF0 is top 4 bit mask for a char.
-
-	return 0;
-}
-
-/*
  * rtc_open
  *   DESCRIPTION:  Initializes the RTC with a frequency of 2 Hz (TA Rohan's suggestion)
  *   INPUTS:       none
@@ -137,4 +88,53 @@ int32_t rtc_close() {
 	// TODO checkpoint 3 File Descriptor Table (FDT)
 
 	return rtc_write(MIN_FREQ);
+}
+
+/*
+ * rtc_read
+ *   DESCRIPTION:  Returns (only when) the next RTC tick occurs
+ *   INPUTS:       none
+ *   OUTPUTS:      none
+ *   RETURN VALUE: 0
+ *   SIDE EFFECTS: none
+ */ 
+int32_t rtc_read() {
+	rtc_tick_flag = 1;			// set flag to wait for RTC tick
+	while(rtc_tick_flag);		// wait for RTC tick
+	return 0;					// acknowledge RTC tick
+}
+
+/*
+ * rtc_write
+ *   DESCRIPTION:  Changes the frequency of the RTC
+ *   INPUTS:       htz - frequency in Hz. Must be between 1 and 1024 inclusive, and also be a power of 2
+ *   OUTPUTS:      none
+ *   RETURN VALUE: -1 on failure
+ *				    0 on success
+ *   SIDE EFFECTS: changes the frequency of the RTC
+ */ 
+int32_t rtc_write(uint32_t htz) {
+	int     temp = htz;						// temp variable to calculate rate
+	uint8_t rate = 15;						// rate passed to the RTC. Rate of 15 corresponds to 2 Hz. We use formula: htz = 32768 >> (rate - 1)
+	char    prev;							// just a temporary variable
+
+	/* Check for valid input */
+	if( htz < MIN_FREQ || htz > MAX_FREQ ) 
+		return -1;
+	if( (htz & (htz-1)) != 0)  				// fancy & efficient way to check if htz is a power of 2
+		return -1;			
+
+	/* Calculate appropriate 'rate' value for the htz we want */
+	while (temp != MIN_FREQ){
+		temp >>= 1;							// divides by 2
+		rate--;
+	}
+
+	// set the interrupt rate
+	outportb(RTC_STATUS_PORT, RTC_DISABLE_NMI | RTC_REG_A);
+	prev = inportb(RTC_DATA_PORT);								// get initial value of register A
+	outportb(RTC_STATUS_PORT, RTC_DISABLE_NMI | RTC_REG_A);		// reset index to A
+	outportb(RTC_DATA_PORT, (prev & 0xF0) | rate);				// write only our rate to A. Note, rate is the bottom 4 bits, so keep the top 4 bits. 0xF0 is top 4 bit mask for a char.
+
+	return 0;
 }

@@ -3,6 +3,15 @@
 #include <tty/terminal.h>
 #include <arch/x86/x86_desc.h>
 
+/*
+ * install_interrupt_handler
+ * Installs interrupt handler for a given interrupt number.
+ * 
+ * @param interrupt_num  The interrupt number on IDT (0 to 255)
+ * @param handler        
+ * @param seg_selector    
+ * @param dpl            Descriptor Privilege Level. The level necessary to execute code/data...
+ */
 void install_interrupt_handler(uint8_t interrupt_num, void *handler, uint8_t seg_selector, uint8_t dpl) {
 	idt_desc_t exception_handle_desc;
 	SET_IDT_ENTRY(exception_handle_desc, handler);

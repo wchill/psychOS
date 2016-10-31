@@ -17,24 +17,12 @@
 void rtc_handler();
 extern void rtc_handler_wrapper(void);
 
-/* Rodney: new constants for 3.2 */
 #define MIN_FREQ    2
 #define MAX_FREQ 1024
 
-/*********************************/
-/* Rodney: new functions for 3.2 */
-/*********************************/
-
-/* Returns (only when) the next RTC tick occurs */
-int32_t rtc_read();         
-
-/* Changes the frequency of the RTC */
-int32_t rtc_write(uint32_t htz);
-
-/* Initializes the RTC with a frequency of 2 Hz */
 int32_t rtc_open();
-
-/* Sets RTC to frequency of 2 Hz. We keep RTC interrupts on */
 int32_t rtc_close();
+int32_t rtc_read();         
+int32_t rtc_write(uint32_t htz);
 
 #endif

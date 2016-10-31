@@ -18,8 +18,14 @@ static volatile uint8_t keyboard_new_line_ready = 0;
 static volatile uint16_t *video_buffer = (volatile uint16_t*) VIDEO_PTR;
 static volatile uint8_t cursor_x = 0;
 static volatile uint8_t cursor_y = 0;
-
-// Sets VGA hardware cursor to be at (x, y) (0-indexed).
+ 
+/*
+ * set_hardware_cursor
+ * Sets VGA hardware cursor to be at (x, y) (0-indexed).
+ * 
+ * @param x   (0-indexed) x coordinate for cursor
+ * @param y   (0-indexed) y coordinate for cursor
+ */
 static void set_hardware_cursor(uint8_t x, uint8_t y) {
     cursor_x = x;
     cursor_y = y;
@@ -35,14 +41,24 @@ static void set_hardware_cursor(uint8_t x, uint8_t y) {
     outportb(VGA_CRTC_PORT_DATA, index & 0xFF);  // 0xFF is a mash to grab lowest 8 bits
 }
 
-// Places the given character at (x, y) in video memory.
+/*
+ * video_buffer_putc
+ * Places the given character at (x, y) in video memory.
+ * 
+ * @param x   (0-indexed) x coordinate for cursor
+ * @param y   (0-indexed) y coordinate for cursor
+ * @param ch  the character to place in video memory
+ */
 static inline void video_buffer_putc(uint8_t x, uint8_t y, uint8_t ch) {
-    uint16_t word = ch | (TERMINAL_FOREGROUND_COLOR | TERMINAL_BACKGROUND_COLOR);
+    uint16_t word = ch | (TERMINAL_FOREGROUND_COLOR | TERMINAL_BACKGROUND_COLOR); // Bits 0-7 are charcter. Bits 8-15 are color
     uint16_t index = VIDEO_INDEX(x, y);
     video_buffer[index] = word;
 }
 
-// Scrolls the screen vertically one row up.
+/*
+ * scroll_screen
+ * Scrolls the screen vertically one row up.
+ */
 static void scroll_screen() {
     // Move the last 3840 bytes (79 rows) forward 160 bytes (1 row), overwriting the first row
     memmove((uint16_t*) &video_buffer[VIDEO_INDEX(0, 0)], (uint16_t*) &video_buffer[VIDEO_INDEX(0, 1)], TERMINAL_COLUMNS * (TERMINAL_ROWS - 1) * 2); // 2 is to double the value
@@ -52,7 +68,14 @@ static void scroll_screen() {
     memset_word((uint16_t*) &video_buffer[VIDEO_INDEX(0, TERMINAL_ROWS - 1)], blank_word, TERMINAL_COLUMNS);
 }
 
-// Buffers one key from the keyboard and echoes it to the screen, updating the cursor position.
+/*
+ * keyboard_putc
+ * Buffers one key from the keyboard and echoes it to the screen, updating the cursor position.
+ * 
+ * @param ch  the character to buffer and echo to screen.
+ *
+ * @returns   number of characters echoed to screen (0 or 1)
+ */
 static uint8_t keyboard_putc(uint8_t ch) {
     if(ch == '\b') {
     // Backspace
@@ -108,6 +131,12 @@ static uint8_t keyboard_putc(uint8_t ch) {
     return 1;
 }
 
+/*
+ * putc
+ * Outputs a character to the screen. Scrolls screen vertically if necessary.
+ * 
+ * @param ch  The character to output to the screen
+ */
 void putc(uint8_t ch) {
     if(ch == '\b') {
         // Update cursor position
@@ -148,7 +177,10 @@ void putc(uint8_t ch) {
     set_hardware_cursor(cursor_x, cursor_y);
 }
 
-// Clears the terminal
+/*
+ * clear_terminal
+ * Clears the terminal
+ */
 void clear_terminal() {
 
     // 16-bit word representing space with black background and white foreground
@@ -161,12 +193,8 @@ void clear_terminal() {
 
 /*
  * keyboard_handler
- *   DESCRIPTION:  this code runs when keyboard Interrupt happens. Outputs keys pressed
- *   INPUTS:       none
- *   OUTPUTS:      Outputs characters to screen
- *   RETURN VALUE: none
- *   SIDE EFFECTS: Screen is updated
- */  
+ * runs when keyboard Interrupt happens. Outputs keys pressed. Can also run tests (Ctrl+1 to Ctrl+5)
+ */
 void keyboard_handler() {
     uint8_t status;
     do {
@@ -239,6 +267,15 @@ void keyboard_handler() {
 }
 
 // Keyboard syscalls
+
+/*
+ * terminal_open
+ * Clears keyboard buffer. Clears terminal. Enables keyboard IRQ.
+ * 
+ * @param filename  For now, ignored.
+ *
+ * @returns         For now, just returns 0.
+ */
 uint32_t terminal_open(const int8_t *filename) {
     // TODO: Assign proper file descriptor
     uint32_t flags;
@@ -246,13 +283,44 @@ uint32_t terminal_open(const int8_t *filename) {
 
     // Clear buffer and screen, then enable keyboard interrupts
     circular_buffer_init((circular_buffer_t*) &keyboard_buffer, (void*) keyboard_buffer_internal, KEYBOARD_BUFFER_SIZE);
-    clear_terminal();
+    clear_terminal(); // Rodney: a situation may arise where we don't want to clear the terminal.
     enable_irq(KEYBOARD_IRQ);
 
     restore_flags(flags);
     return 0;
 }
 
+/*
+ * terminal_close
+ * Clears keyboard buffer. Clears terminal. We don't disable IRQ since we will have 3 terminals in mp3.5
+ * 
+ * @param fd  For now, ignored.
+ *
+ * @returns   For now, just returns 0.
+ */
+uint32_t terminal_close(int32_t fd) {
+    // TODO: handle invalid file descriptor
+    uint32_t flags;
+    cli_and_save(flags);
+
+    circular_buffer_clear((circular_buffer_t*) &keyboard_buffer);
+    clear_terminal();
+
+    restore_flags(flags);
+    // disable_irq(KEYBOARD_IRQ);
+    return 0;
+}
+
+/*
+ * terminal_read
+ * Reads (up to) nbytes into provided buffer
+ * 
+ * @param fd     For now, ignored.
+ * @param buf    The buffer to write to.
+ * @param nbytes The (maximum) number of bytes to write to provided buffer
+ *
+ * @returns      The number of bytes actually written.
+ */
 uint32_t terminal_read(int32_t fd, void *buf, int32_t nbytes) {
     // TODO: Do something with the fd
 
@@ -267,7 +335,9 @@ uint32_t terminal_read(int32_t fd, void *buf, int32_t nbytes) {
 
     // Read up to min(nbytes, number of bytes available in buffered line)
     max_len = circular_buffer_find((circular_buffer_t*) &keyboard_buffer, '\n') + 1;
-    if(max_len < nbytes) nbytes = max_len;
+    if(max_len < nbytes){
+        nbytes = max_len;
+    }
     retval = circular_buffer_get((circular_buffer_t*) &keyboard_buffer, buf, nbytes);
 
     // We read one new line
@@ -277,7 +347,18 @@ uint32_t terminal_read(int32_t fd, void *buf, int32_t nbytes) {
     return retval;
 }
 
+/*
+ * terminal_write
+ * Writes nbytes from provided buffer to screen
+ * 
+ * @param fd     For now, ignored.
+ * @param buf    This is where we get the bytes to write to the screen
+ * @param nbytes The number of bytes to output to screen
+ *
+ * @returns      Always returns nbytes
+ */
 uint32_t terminal_write(int32_t fd, const void *buf, int32_t nbytes) {
+    // TODO: something with the fd
     int i;
     uint32_t flags;
     cli_and_save(flags);
@@ -289,17 +370,4 @@ uint32_t terminal_write(int32_t fd, const void *buf, int32_t nbytes) {
 
     restore_flags(flags);
     return nbytes;
-}
-
-uint32_t terminal_close(int32_t fd) {
-    // TODO: handle invalid file descriptor
-    uint32_t flags;
-    cli_and_save(flags);
-
-    circular_buffer_clear((circular_buffer_t*) &keyboard_buffer);
-    clear_terminal();
-
-    restore_flags(flags);
-    // disable_irq(KEYBOARD_IRQ);
-    return 0;
 }
