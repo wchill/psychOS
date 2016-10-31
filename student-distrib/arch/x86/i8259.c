@@ -4,6 +4,7 @@
 
 #include <arch/x86/i8259.h>
 #include <lib/lib.h>
+#include <arch/x86/io.h>
 
 /* Interrupt masks to determine which interrupts are enabled and disabled */
 uint8_t master_mask = EIGHT_BIT_MASK; /* IRQs 0-7  */
@@ -27,14 +28,14 @@ i8259_init(void)
     /* Instructions for Master */
     outportb(MASTER_8259_PORT_COMMAND, ICW1);       /* ICW1: select 8259A-1 init */
     outportb(MASTER_8259_PORT_DATA, ICW2_MASTER);   /* ICW2: 8259A-1 IR0-7 mapped to 0x20-0x27 */
-    outportb(MASTER_8259_PORT_DATA);                /* 8259A-1 (the master, ICW3_MASTER) has a slave on IR2 */
+    outportb(MASTER_8259_PORT_DATA, ICW3_SLAVE);    /* 8259A-1 (the master, ICW3_MASTER) has a slave on IR2 */
     outportb(MASTER_8259_PORT_DATA, ICW4);          /* master expects normal EOI */
 
     /* Instructions for Slave */
     outportb(SLAVE_8259_PORT_COMMAND, ICW1);        /* ICW1: select 8259A-2 init */      
     outportb(SLAVE_8259_PORT_DATA, ICW2_SLAVE);     /* ICW2: 8259A-2 IR0-7 mapped to 0x28-0x2f */
     outportb(SLAVE_8259_PORT_DATA, ICW3_SLAVE);     /* 8259A-2 is a slave on master's IR2 */
-    outportb(SLAVE_8259_PORT_DATA);                 /* (slave's support for AEOI in flat mode is to be investigated, ICW4) */
+    outportb(SLAVE_8259_PORT_DATA, ICW4);           /* (slave's support for AEOI in flat mode is to be investigated, ICW4) */
 
     master_mask &= (~ICW3_MASTER);               // Rodney: this enables IRQ 2 so that slave works.
     outportb(MASTER_8259_PORT_DATA, master_mask);
