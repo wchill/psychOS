@@ -1,8 +1,21 @@
-.align 4
+// Reference: https://littleosbook.github.io/#creating-a-generic-interrupt-handler
+
+/* The only difference between an interrupt handler and a trap handler is that the interrupt handler 
+   disables interrupts, which means you cannot get an interrupt while at the same time handling an interrupt.
+   We will use trap handlers and disable interrupts manually when we need to. */
+
+.align 4  # aligns on 4 byte entries
+
+/**
+ * common_exception_wrapper
+ * Does bookkeeping and calls exception_handler to handle one of 32 Exceptions
+ */
 common_exception_wrapper:
 	# Push all general purpose registers (4x8 = 32 bytes)
 	# Order of values goes like this (high -> low):
 	# eflags, cs, eip, int_num, error, ebp, esp, ..., eax
+
+	# Rodney: eflags, cs, eip already on stack. int_num, error, were pushed by the handler (in macro functions below) that called this code.
 	push %esp
 	push %ebp
 	push %edi
@@ -21,13 +34,21 @@ common_exception_wrapper:
 	pop %edi
 	pop %ebp
 	pop %esp
-	add $8, %esp
+	add $8, %esp  # pops 2 arguments off the stack
 	iret
 
+/**
+ * null_interrupt_handler
+ * Does nothing other than an iret
+ */
 .globl null_interrupt_handler
 null_interrupt_handler:
 	iret
 
+/**
+ * Macro: interrupt_handler_X
+ * Handler for exceptions that don't have an error code
+ */
 .macro no_error_code_exception_handler num
 .globl interrupt_handler_\num
 interrupt_handler_\num:
@@ -36,6 +57,10 @@ interrupt_handler_\num:
 	jmp common_exception_wrapper
 .endm
 
+/**
+ * Macro: interrupt_handler_X
+ * Handler for exceptions that have an error code
+ */
 .macro error_code_exception_handler num
 .globl interrupt_handler_\num
 interrupt_handler_\num:
@@ -43,6 +68,9 @@ interrupt_handler_\num:
 	jmp common_exception_wrapper
 .endm
 
+/**
+ * Macro for handlers such as RTC, Keyboard, Syscalls. Will use for more stuff later.
+ */
 .macro interrupt_handler func_name
 .globl \func_name\()_wrapper
 \func_name\()_wrapper:
