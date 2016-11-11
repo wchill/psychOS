@@ -250,6 +250,6 @@ entry (unsigned long magic, unsigned long addr)
     uint8_t input[KEYBOARD_SIZE];
     for(;;) {
         asm("hlt");
-        terminal_read(0, input, KEYBOARD_SIZE);
+        syscall_execute("shell");
     }
 }

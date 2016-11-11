@@ -16,12 +16,18 @@
 
 #define SYSCALL_EINVAL -1
 
-uint32_t syscall_handler(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx, uint32_t esi, uint32_t edi, uint32_t ebp);
+int32_t syscall_handler(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx);
 extern void syscall_handler_wrapper(void);
 
-uint32_t syscall_read(int32_t fd, void *buf, int32_t nbytes);
-uint32_t syscall_write(int32_t fd, const void *buf, int32_t nbytes);
-uint32_t syscall_open(const uint8_t *filename);
-uint32_t syscall_close(int32_t fd);
+int32_t syscall_read(int32_t fd, void *buf, int32_t nbytes);
+int32_t syscall_write(int32_t fd, const void *buf, int32_t nbytes);
+int32_t syscall_open(const uint8_t *filename);
+int32_t syscall_close(int32_t fd);
+int32_t syscall_execute(const uint8_t *command);
+int32_t syscall_halt(uint8_t status);
+int32_t syscall_getargs(uint8_t *buf, int32_t nbytes);
+int32_t syscall_vidmap(uint8_t **screen_start);
+int32_t syscall_set_handler(int32_t signum, void *handler_address);
+int32_t syscall_sigreturn(void);
 
 #endif

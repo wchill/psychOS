@@ -77,8 +77,7 @@ int32_t file_write(int32_t fd, const void *buf, int32_t nbytes) {
 }
 
 
-/* Test code for Checkpoint 3.2: to be removed later
- *
+/*
  * read_file_by_name
  * Reads nbytes from a file into a buffer.
  * 
