@@ -13,6 +13,7 @@
 #define NUM_PD_ENTRIES    1024     /* max number of entries in Page Directory                      */
 #define NUM_PT_ENTRIES    1024     /* max number of entries in Page Table                          */
 #define FOUR_KB_ALIGNED   4096     /* bytes in 4 kilobytes that we align structures to             */
+#define FOUR_MB_ALIGNED   4194304  /* bytes in 4 megabytes */
 #define ADDRESS_SHIFT       12     /* Number of bits to shift (right) offset for 4 KB aligned page */
 #define NUM_RESERVED_BITS    3     /* number of bits reserved in PD 4-byte entry                   */
 #define NUM_BITS_ADDR       20     /* number of bits to address Page Table or Page. 
@@ -62,6 +63,7 @@ typedef struct __attribute__((packed)) pt_entry {
 } pt_entry;
 
 extern void enable_paging(pd_entry *table_ptr);
-void initialize_paging();
+void setup_kernel_paging();
+void setup_process_paging(pd_entry *local_pd, pt_entry *local_vmem_pt, void *process_addr);
 
 #endif

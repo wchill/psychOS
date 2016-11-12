@@ -140,10 +140,11 @@ entry (unsigned long magic, unsigned long addr)
         the_tss_desc.avail          = 0;
         the_tss_desc.seg_lim_19_16  = TSS_SIZE & 0x000F0000;
         the_tss_desc.present        = 1;
-        the_tss_desc.dpl            = 0x0;
         the_tss_desc.sys            = 0;
         the_tss_desc.type           = 0x9;
-        the_tss_desc.seg_lim_15_00  = TSS_SIZE & 0x0000FFFF;
+
+        // Make accessible from ring 3
+        the_tss_desc.dpl            = 0x3;
 
         SET_TSS_PARAMS(the_tss_desc, &tss, tss_size);
 
@@ -231,7 +232,8 @@ entry (unsigned long magic, unsigned long addr)
     }
     
     printf("Initializing Paging\n");
-    initialize_paging();
+    setup_kernel_paging();
+    enable_paging(paging_directory);
 
     /* Enable interrupts */
     /* Do not enable the following until after you have set up your

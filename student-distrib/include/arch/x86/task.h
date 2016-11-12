@@ -34,4 +34,7 @@ typedef struct task_kernel_stack_t {
 	uint8_t stack[8192 - sizeof(pcb_t)];
 } task_kernel_stack_t;
 
+void set_kernel_stack(void *stack);
+extern void switch_to_ring_3(void);
+
 #endif
