@@ -1,5 +1,8 @@
 #include <kernel/syscall.h>
-#include <kernel/pcb.h>
+#include <arch/x86/task.h>
+#include <lib/lib.h>
+
+static int test_arr[32];
 
 int32_t syscall_handler(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx) {
 	switch(eax) {
@@ -11,10 +14,12 @@ int32_t syscall_handler(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx) 
 			return syscall_open((uint8_t*) ebx);
 		case SYSCALL_CLOSE:
 			return syscall_close((int32_t) ebx);
+		case SYSCALL_EXECUTE:
+			return syscall_execute((uint8_t*) ebx);
+		case SYSCALL_HALT:
+			return syscall_halt((uint8_t) ebx);
 
 		/* Currently unimplemented */
-		case SYSCALL_HALT:
-		case SYSCALL_EXECUTE:
 		case SYSCALL_GETARGS:
 		case SYSCALL_VIDMAP:
 		case SYSCALL_SET_HANDLER:
@@ -41,6 +46,27 @@ int32_t syscall_close(int32_t fd) {
 }
 
 int32_t syscall_execute(const uint8_t *command) {
+	/* Parse args */
+	int index = 0;
+	int start = 0;
+	int len = 0;
+	uint8_t ch;
+	while((ch = command[index++]) != '\0') {
+		if (ch == ' ') {
+			while(ch == ' ') {
+				ch = command[index++];
+			}
+			start = index;
+			break;
+		}
+	}
+	if(start > 0) {
+		len = strlen((int8_t*) &command[start]);
+	}
+	len++;
+
+	//get_executable_entrypoint
+
 	return -1;
 }
 

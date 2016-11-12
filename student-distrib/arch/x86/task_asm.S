@@ -18,15 +18,15 @@ switch_to_ring_3:
 
 	# Need to create artificial iret context
 	# push in this order: ss, esp, eflags, cs, eip
-	movl 	%esp, %eax
+	mov 	%esp, %eax
 	pushl 	USER_DS
-	pushl 	%eax
+	push 	%eax
 	# push flags (16-bit)
 	# todo: evaluate whether this is actually correct?
-	pushfd
-	popfd 	%eax
+	pushf
+	pop 	%eax
 	or 		$0x200, %eax
 	push 	%eax
-	pushl 	USER_CS
-	pushl 	%ebx
-	iretd
+	push 	USER_CS
+	push 	%ebx
+	iret

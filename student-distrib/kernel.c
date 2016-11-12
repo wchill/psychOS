@@ -23,6 +23,9 @@
 #define BUFFER_4K 4096
 #define KEYBOARD_SIZE 128
 
+static pd_entry kernel_pd[NUM_PD_ENTRIES] __attribute__((aligned (FOUR_KB_ALIGNED)));
+static pt_entry kernel_vmem_pt[NUM_PT_ENTRIES] __attribute__((aligned (FOUR_KB_ALIGNED)));
+
 /* Check if MAGIC is valid and print the Multiboot information structure
    pointed by ADDR. */
 void
@@ -232,8 +235,9 @@ entry (unsigned long magic, unsigned long addr)
     }
     
     printf("Initializing Paging\n");
-    setup_kernel_paging();
-    enable_paging(paging_directory);
+
+    initialize_paging_structs(kernel_pd, kernel_vmem_pt);
+    enable_paging(kernel_pd);
 
     /* Enable interrupts */
     /* Do not enable the following until after you have set up your
@@ -242,16 +246,10 @@ entry (unsigned long magic, unsigned long addr)
     printf("Enabling Interrupts\n");
     sti();
 
-    terminal_open("stdin");
+    syscall_execute((uint8_t*) "shell");
 
-    //rtc_read(); // tests "rtc_read" since code doesn't infinitely loop here, that means the function returned.
-
-    /* Execute the first program (`shell') ... */
-    
-    /* Spin (nicely, so we don't chew up cycles) */
-    uint8_t input[KEYBOARD_SIZE];
+    // We will never come back here
     for(;;) {
-        asm("hlt");
-        syscall_execute("shell");
+        asm volatile("hlt");
     }
 }

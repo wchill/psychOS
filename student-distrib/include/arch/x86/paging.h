@@ -63,7 +63,7 @@ typedef struct __attribute__((packed)) pt_entry {
 } pt_entry;
 
 extern void enable_paging(pd_entry *table_ptr);
-void setup_kernel_paging();
+void initialize_paging_structs(pd_entry *local_pd, pt_entry *local_vmem_pt);
 void setup_process_paging(pd_entry *local_pd, pt_entry *local_vmem_pt, void *process_addr);
 
 #endif

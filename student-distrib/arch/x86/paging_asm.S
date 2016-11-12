@@ -12,35 +12,22 @@
 # Registers: Standard C calling convention
 .globl enable_paging
 enable_paging:
-    /* Create stack frame */
-    pushl   %ebp                        # save old frame pointer
-    movl    %esp, %ebp                  # point to new frame
-    pushl   %ebx                        # protect callee-saved register
-    pushl   %esi                        # protect callee-saved register
-    pushl   %edi                        # protect callee-saved register
-
 
     # Page directory passed in first parameter
-    mov 8(%ebp), %eax                   # 8 is offset to 1st argument.
+    mov 4(%esp), %eax                   # 4 is offset to 1st argument.
     mov %eax, %cr3
 
     # Set Page Size Extensions bit / 4MB pages
-    mov %cr4, %ebx
-    or  $0x10, %ebx                     # 0x10 is mask to turn on the 4th bit
+    mov %cr4, %eax
+    or  $0x10, %eax                     # 0x10 is mask to turn on the 4th bit
 
     # Clear Physical Address Extension bit / Disable 36-bit addressing
-    and $0xFFFFFFDF, %ebx               # 0xFFFFFFDF is mask to turn off 5th bit. Rodney: I originally mentioned this is necessary, now unsure.
-    mov %ebx, %cr4
+    and $0xFFFFFFDF, %eax               # 0xFFFFFFDF is mask to turn off 5th bit. Rodney: I originally mentioned this is necessary, now unsure.
+    mov %eax, %cr4
 
     # Set Paging Enable bit / enable paging
-    mov %cr0, %ebx
-    or  $0x80000000, %ebx               # 0x80000000 is mask to turn on 32nd bit. 
-    mov %ebx, %cr0
+    mov %cr0, %eax
+    or  $0x80000000, %eax               # 0x80000000 is mask to turn on 32nd bit. 
+    mov %eax, %cr0
 
-
-    /* Tear down stack frame */
-    popl    %edi                        # restore callee-saved register
-    popl    %esi                        # restore callee-saved register
-    popl    %ebx                        # restore callee-saved register
-    leave                               # restore frame pointer
     ret                                 # return
