@@ -133,4 +133,3 @@ no_error_code_exception_handler 31
 
 interrupt_handler keyboard_handler
 interrupt_handler rtc_handler
-interrupt_handler syscall_handler

@@ -43,7 +43,7 @@ typedef struct __attribute__((packed, aligned(4))) pd_entry { // 4 = align struc
 } pd_entry;
 
 /* Page Table (PT) Entry */
-typedef struct __attribute__((packed)) pt_entry {
+typedef struct __attribute__((packed, aligned(4))) pt_entry {
 	union {
 		uint32_t val;
 		struct {
@@ -63,7 +63,7 @@ typedef struct __attribute__((packed)) pt_entry {
 } pt_entry;
 
 extern void enable_paging(pd_entry *table_ptr);
-void initialize_paging_structs(pd_entry *local_pd, pt_entry *local_vmem_pt);
-void setup_process_paging(pd_entry *local_pd, pt_entry *local_vmem_pt, void *process_addr);
+void initialize_paging_structs(pd_entry *local_pd);
+void setup_process_paging(pd_entry *local_pd, void *process_addr);
 
 #endif

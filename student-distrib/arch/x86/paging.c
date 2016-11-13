@@ -1,6 +1,8 @@
 #include <arch/x86/paging.h>
 
-void initialize_paging_structs(pd_entry *local_pd, pt_entry *local_vmem_pt) {
+static pt_entry vmem_pt[NUM_PT_ENTRIES] __attribute__((aligned (FOUR_KB_ALIGNED)));
+
+void initialize_paging_structs(pd_entry *local_pd) {
     /* Set up remaining Page Table Entries to be empty (8 MB to 4 GigaBytes) */
     {
         int i;
@@ -16,7 +18,7 @@ void initialize_paging_structs(pd_entry *local_pd, pt_entry *local_vmem_pt) {
         pd_entry video_mem_entry; /* An entry representing first 4 MB of physical memory */
         int i;
 
-        video_mem_entry.physical_addr_31_to_12 = (uint32_t) &local_vmem_pt[0] >> ADDRESS_SHIFT;
+        video_mem_entry.physical_addr_31_to_12 = (uint32_t) &vmem_pt[0] >> ADDRESS_SHIFT;
         video_mem_entry.global_ignored  = 0;
         video_mem_entry.page_size       = 0;
         video_mem_entry.dirty_ignored   = 0;
@@ -47,7 +49,7 @@ void initialize_paging_structs(pd_entry *local_pd, pt_entry *local_vmem_pt) {
                 my_entry.read_write        = 1;
                 my_entry.present           = 1;
             }
-            local_vmem_pt[i] = my_entry;
+            vmem_pt[i] = my_entry;
         }
     }
 
@@ -70,15 +72,15 @@ void initialize_paging_structs(pd_entry *local_pd, pt_entry *local_vmem_pt) {
     }
 }
 
-void setup_process_paging(pd_entry *local_pd, pt_entry *local_vmem_pt, void *process_addr) {
-    initialize_paging_structs(local_pd, local_vmem_pt);
+void setup_process_paging(pd_entry *local_pd, void *process_addr) {
+    initialize_paging_structs(local_pd);
     /* Set up Process Page Table Entry (128MB to 132MB -> process_addr) */
     {
         pd_entry process_page_entry;
 
         // Clear bottom 12 bits, shift over 12 bits
         process_page_entry.physical_addr_31_to_12 = ((uint32_t) process_addr & ~(FOUR_MB_ALIGNED - 1)) >> ADDRESS_SHIFT;
-        process_page_entry.global_ignored  = 1;
+        process_page_entry.global_ignored  = 0;
         process_page_entry.page_size       = 1;
         process_page_entry.dirty_ignored   = 0;
         process_page_entry.accessed        = 0;

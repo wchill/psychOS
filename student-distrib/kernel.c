@@ -24,7 +24,6 @@
 #define KEYBOARD_SIZE 128
 
 static pd_entry kernel_pd[NUM_PD_ENTRIES] __attribute__((aligned (FOUR_KB_ALIGNED)));
-static pt_entry kernel_vmem_pt[NUM_PT_ENTRIES] __attribute__((aligned (FOUR_KB_ALIGNED)));
 
 /* Check if MAGIC is valid and print the Multiboot information structure
    pointed by ADDR. */
@@ -236,7 +235,7 @@ entry (unsigned long magic, unsigned long addr)
     
     printf("Initializing Paging\n");
 
-    initialize_paging_structs(kernel_pd, kernel_vmem_pt);
+    initialize_paging_structs(kernel_pd);
     enable_paging(kernel_pd);
 
     /* Enable interrupts */
@@ -246,7 +245,7 @@ entry (unsigned long magic, unsigned long addr)
     printf("Enabling Interrupts\n");
     sti();
 
-    syscall_execute((uint8_t*) "shell");
+    kernel_run_first_program("shell");
 
     // We will never come back here
     for(;;) {

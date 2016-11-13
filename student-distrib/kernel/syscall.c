@@ -2,90 +2,70 @@
 #include <arch/x86/task.h>
 #include <lib/lib.h>
 
-static int test_arr[32];
-
-int32_t syscall_handler(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx) {
-	switch(eax) {
-		case SYSCALL_READ:
-			return syscall_read((int32_t) ebx, (void*) ecx, (int32_t) edx);
-		case SYSCALL_WRITE:
-			return syscall_write((int32_t) ebx, (void*) ecx, (int32_t) edx);
-		case SYSCALL_OPEN:
-			return syscall_open((uint8_t*) ebx);
-		case SYSCALL_CLOSE:
-			return syscall_close((int32_t) ebx);
-		case SYSCALL_EXECUTE:
-			return syscall_execute((uint8_t*) ebx);
-		case SYSCALL_HALT:
-			return syscall_halt((uint8_t) ebx);
-
-		/* Currently unimplemented */
-		case SYSCALL_GETARGS:
-		case SYSCALL_VIDMAP:
-		case SYSCALL_SET_HANDLER:
-		case SYSCALL_SIGRETURN:
-		default:
-			return SYSCALL_EINVAL;
-	}
-}
-
-int32_t syscall_open(const uint8_t *filename) {
+int32_t syscall_open(uint32_t esp, const uint8_t *filename) {
 	return -1;
 }
 
-int32_t syscall_read(int32_t fd, void *buf, int32_t nbytes) {
+int32_t syscall_read(uint32_t esp, int32_t fd, void *buf, int32_t nbytes) {
 	return -1;
 }
 
-int32_t syscall_write(int32_t fd, const void *buf, int32_t nbytes) {
+int32_t syscall_write(uint32_t esp, int32_t fd, const void *buf, int32_t nbytes) {
 	return -1;
 }
 
-int32_t syscall_close(int32_t fd) {
+int32_t syscall_close(uint32_t esp, int32_t fd) {
 	return -1;
 }
 
-int32_t syscall_execute(const uint8_t *command) {
-	/* Parse args */
-	int index = 0;
-	int start = 0;
-	int len = 0;
-	uint8_t ch;
-	while((ch = command[index++]) != '\0') {
-		if (ch == ' ') {
-			while(ch == ' ') {
-				ch = command[index++];
-			}
-			start = index;
+int32_t syscall_execute(uint32_t esp, const uint8_t *command) {
+	static uint32_t pid = 0;
+
+	pcb_t *parent_pcb = get_task_pcb(esp);
+	pcb_t *child_pcb = NULL;
+
+	// Find a free PCB slot
+	int i;
+	for(i = 0; i < MAX_PROCESSES; i++) {
+		pcb_t *some_pcb = get_pcb_slot(i);
+		if(!some_pcb->in_use) {
+			child_pcb = some_pcb;
 			break;
 		}
 	}
-	if(start > 0) {
-		len = strlen((int8_t*) &command[start]);
-	}
-	len++;
 
-	//get_executable_entrypoint
+	// No free PCB slots available
+	if(child_pcb == NULL) return -1;
+
+	// Save args in PCB
+	parse_args(command, child_pcb->args);
+
+	// TODO: finish
+
+	// Load executable
+
+	// Get entrypoint
+	//get_executable_entrypoint()
 
 	return -1;
 }
 
-int32_t syscall_halt(uint8_t status) {
+int32_t syscall_halt(uint32_t esp, uint8_t status) {
 	return -1;
 }
 
-int32_t syscall_getargs(uint8_t *buf, int32_t nbytes) {
+int32_t syscall_getargs(uint32_t esp, uint8_t *buf, int32_t nbytes) {
 	return -1;
 }
 
-int32_t syscall_vidmap(uint8_t **screen_start) {
+int32_t syscall_vidmap(uint32_t esp, uint8_t **screen_start) {
 	return -1;
 }
 
-int32_t syscall_set_handler(int32_t signum, void *handler_address) {
+int32_t syscall_set_handler(uint32_t esp, int32_t signum, void *handler_address) {
 	return -1;
 }
 
-int32_t syscall_sigreturn(void) {
+int32_t syscall_sigreturn(uint32_t esp) {
 	return -1;
 }
