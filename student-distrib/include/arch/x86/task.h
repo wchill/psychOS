@@ -8,6 +8,13 @@
 
 typedef struct pcb_t pcb_t;
 
+typedef struct file_t {
+    uint32_t tp;    // table pointer
+    uint32_t inode; // inode
+    uint32_t fp;    // file position
+    uint32_t flags; // flags
+} file_t;
+
 struct pcb_t {
 	struct {
 		uint32_t eax;
@@ -22,7 +29,7 @@ struct pcb_t {
 		uint32_t eflags;
 	} regs;
 	uint32_t pid;
-	int32_t fd[8];
+	file_t fd[8];
 	uint32_t esp0;
 	uint32_t page_directory_addr;
 	uint32_t status;
