@@ -1,4 +1,5 @@
 #include <arch/x86/paging.h>
+#include <arch/x86/task.h>
 
 static pt_entry vmem_pt[NUM_PT_ENTRIES] __attribute__((aligned (FOUR_KB_ALIGNED)));
 
@@ -69,6 +70,28 @@ void initialize_paging_structs(pd_entry *local_pd) {
         kernel_page_entry.present         = 1;
         
         local_pd[1] = kernel_page_entry;
+    }
+
+    /* Set up program pages */
+    {
+        int i;
+        for(i = 0; i < MAX_PROCESSES; i++) {
+            pd_entry process_page_entry;
+
+            // Clear bottom 12 bits, shift over 12 bits
+            process_page_entry.physical_addr_31_to_12 = 2048 + 1024 * i;
+            process_page_entry.global_ignored  = 0;
+            process_page_entry.page_size       = 1;
+            process_page_entry.dirty_ignored   = 0;
+            process_page_entry.accessed        = 0;
+            process_page_entry.cache_disabled  = 0;
+            process_page_entry.write_through   = 0;
+            process_page_entry.user_accessible = 0;
+            process_page_entry.read_write      = 1;
+            process_page_entry.present         = 1;
+
+            local_pd[2 + i] = process_page_entry;
+        }
     }
 }
 

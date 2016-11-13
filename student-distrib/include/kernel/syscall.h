@@ -22,7 +22,7 @@ int32_t syscall_read(uint32_t esp, int32_t fd, void *buf, int32_t nbytes);
 int32_t syscall_write(uint32_t esp, int32_t fd, const void *buf, int32_t nbytes);
 int32_t syscall_open(uint32_t esp, const uint8_t *filename);
 int32_t syscall_close(uint32_t esp, int32_t fd);
-int32_t syscall_execute(uint32_t esp, const uint8_t *command);
+int32_t syscall_execute(uint32_t esp, const int8_t *command, uint32_t ecx, uint32_t edx, uint32_t esi, uint32_t edi, uint32_t eip, uint32_t cs, uint32_t eflags);
 int32_t syscall_halt(uint32_t esp, uint8_t status);
 int32_t syscall_getargs(uint32_t esp, uint8_t *buf, int32_t nbytes);
 int32_t syscall_vidmap(uint32_t esp, uint8_t **screen_start);

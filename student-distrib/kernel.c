@@ -14,6 +14,7 @@
 #include <kernel/syscall.h>
 #include <drivers/rtc.h>
 #include <kernel/tests.h> // added for 3.2
+#include <arch/x86/task.h>
 
 /* Macros. */
 /* Check if the bit BIT in FLAGS is set. */
@@ -140,7 +141,7 @@ entry (unsigned long magic, unsigned long addr)
         the_tss_desc.opsize         = 0;
         the_tss_desc.reserved       = 0;
         the_tss_desc.avail          = 0;
-        the_tss_desc.seg_lim_19_16  = TSS_SIZE & 0x000F0000;
+        the_tss_desc.seg_lim_19_16  = (TSS_SIZE & 0x000F0000) >> 16;
         the_tss_desc.present        = 1;
         the_tss_desc.sys            = 0;
         the_tss_desc.type           = 0x9;

@@ -87,7 +87,7 @@ int32_t file_write(int32_t fd, const void *buf, int32_t nbytes) {
  * 
  * @returns         number of bytes read (may be less than nbytes), or -1 for failure
  */
-int32_t read_file_by_name(char *filename, void *buf, uint32_t nbytes) {
+int32_t read_file_by_name(const char *filename, void *buf, uint32_t nbytes) {
     dentry_t dentry;
     int32_t res = read_dentry_by_name((uint8_t*) filename, &dentry);
 

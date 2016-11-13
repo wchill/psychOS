@@ -5,12 +5,15 @@
 switch_to_ring_3:
 	cli
 
-	# Backup pointer to function
-	pop 	%ebx
+	# eip
+	mov 	8(%esp), %ebx
+
+	# esp
+	mov 	4(%esp), %ecx
 
 	# Set segment registers
 	xor 	%eax, %eax
-	mov 	USER_DS, %ax
+	mov 	$USER_DS, %ax
 	mov 	%eax, %ds
 	mov 	%eax, %es
 	mov 	%eax, %fs
@@ -18,15 +21,17 @@ switch_to_ring_3:
 
 	# Need to create artificial iret context
 	# push in this order: ss, esp, eflags, cs, eip
-	mov 	%esp, %eax
-	pushl 	USER_DS
-	push 	%eax
-	# push flags (16-bit)
+	push 	$USER_DS
+	push 	%ecx
+
+	# push flags
 	# todo: evaluate whether this is actually correct?
 	pushf
+	# Enable interrupts
 	pop 	%eax
 	or 		$0x200, %eax
 	push 	%eax
-	push 	USER_CS
+
+	push 	$USER_CS
 	push 	%ebx
 	iret

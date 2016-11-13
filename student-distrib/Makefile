@@ -42,8 +42,11 @@ Makefile.dep: $(SRC)
 	$(CC) -MM $(CPPFLAGS) $(SRC) > $@
 
 .PHONY: clean
+
+#	rm -f *.o */*.o Makefile.dep
 clean:
-	rm -f *.o */*.o Makefile.dep
+	find . -name "*.o" -type f -print0 | xargs -0 rm -f
+	rm -f Makefile.dep
 
 ifneq ($(MAKECMDGOALS),dep)
 ifneq ($(MAKECMDGOALS),clean)

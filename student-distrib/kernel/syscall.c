@@ -18,18 +18,19 @@ int32_t syscall_close(uint32_t esp, int32_t fd) {
 	return -1;
 }
 
-int32_t syscall_execute(uint32_t esp, const uint8_t *command) {
-	static uint32_t pid = 0;
+int32_t syscall_execute(uint32_t esp, const int8_t *command, uint32_t ecx, uint32_t edx, uint32_t esi, uint32_t edi, uint32_t eip, uint32_t cs, uint32_t eflags) {
+	static uint32_t pid = 1;
 
-	pcb_t *parent_pcb = get_task_pcb(esp);
+	pcb_t *parent_pcb = get_pcb_from_esp((void*) esp);
 	pcb_t *child_pcb = NULL;
 
 	// Find a free PCB slot
 	int i;
 	for(i = 0; i < MAX_PROCESSES; i++) {
-		pcb_t *some_pcb = get_pcb_slot(i);
+		pcb_t *some_pcb = get_pcb_from_slot(i);
 		if(!some_pcb->in_use) {
 			child_pcb = some_pcb;
+			child_pcb->slot_num = i;
 			break;
 		}
 	}
@@ -37,15 +38,30 @@ int32_t syscall_execute(uint32_t esp, const uint8_t *command) {
 	// No free PCB slots available
 	if(child_pcb == NULL) return -1;
 
+	// Load executable and check validity
+	uint32_t entrypoint = load_program_into_slot(command, child_pcb->slot_num);
+	if(entrypoint == NULL) return -1;
+
+	// Set up PCB
+	child_pcb->parent = parent_pcb;
+	child_pcb->child = NULL;
+	parent_pcb->child = child_pcb;
+	child_pcb->in_use = 1;
+	child_pcb->pid = pid++;
+
 	// Save args in PCB
 	parse_args(command, child_pcb->args);
 
-	// TODO: finish
+	// Process paging
+	setup_process_paging(child_pcb->process_pd, get_process_page_from_slot(child_pcb->slot_num));
+	enable_paging(child_pcb->process_pd);
 
-	// Load executable
+	// Prepare for context switch
+	set_kernel_stack(get_kernel_stack_base_from_slot(child_pcb->slot_num));
 
-	// Get entrypoint
-	//get_executable_entrypoint()
+	// Switch to user mode
+
+	// Come back here after halt, return retval
 
 	return -1;
 }

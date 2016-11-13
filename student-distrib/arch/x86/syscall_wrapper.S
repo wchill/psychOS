@@ -22,7 +22,7 @@ syscall_handler_wrapper:
 	push %edx
 	push %ecx
 	push %ebx
-	mov $32(%esp), %ebx
+	mov 32(%esp), %ebx
 	push %ebx
 	cld
 	call *syscall_jump_table(, %eax, 4)
