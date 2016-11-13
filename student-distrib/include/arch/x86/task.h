@@ -14,11 +14,19 @@
 
 typedef struct pcb_t pcb_t;
 
+typedef struct file_ops {
+    int32_t (* open) (const uint8_t * filename);
+    int32_t (* read) (int32_t fd, void * buf, int32_t nbytes);
+    int32_t (* write) (int32_t fd, const void * buf, int32_t nbytes);
+    int32_t (* close) (int32_t fd);
+    // TODO other sys calls
+} file_ops;
+
 typedef struct file_t {
-    uint32_t tp;    // table pointer
-    uint32_t inode; // inode
-    uint32_t fp;    // file position
-    uint32_t flags; // flags
+    file_ops  * fops;          // a pointer to methods that we can use to manipulate file data (open, close, read, write)
+    uint32_t    file_position; // a pointer within file. Will tell us where to read/write within the file.
+    uint32_t    flags;         // in our case it's not for synchronization. It will be used to indicate if file descriptor is busy or free
+    uint32_t    inode;         // a number that indicates which file we are talking about.
 } file_t;
 
 struct pcb_t {
@@ -35,7 +43,7 @@ struct pcb_t {
 		uint32_t eip;
 		uint32_t eflags;
 	} regs;
-	file_t fd[8];
+	file_t fa[8];
 	uint8_t args[128];
 	uint32_t pid;
 	uint32_t esp0;
