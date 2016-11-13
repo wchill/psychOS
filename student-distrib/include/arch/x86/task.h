@@ -6,6 +6,8 @@
 #define PCB_BITMASK (~0x1FFF)
 #define ELF_MAGIC_HEADER "\x7f\x45\x4c\x46"
 
+#define MAX_PROCESSES 2
+
 typedef struct pcb_t pcb_t;
 
 typedef struct file_t {
@@ -28,14 +30,16 @@ struct pcb_t {
 		uint32_t eip;
 		uint32_t eflags;
 	} regs;
-	uint32_t pid;
 	file_t fd[8];
+	uint8_t args[128];
+	uint32_t pid;
 	uint32_t esp0;
 	uint32_t page_directory_addr;
 	uint32_t status;
 	pcb_t *parent;
 	pcb_t *child;
-	uint8_t *args;
+
+	uint8_t in_use;
 };
 
 typedef struct task_kernel_stack_t {
