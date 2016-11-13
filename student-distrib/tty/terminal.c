@@ -328,9 +328,18 @@ uint32_t terminal_read(int32_t fd, void *buf, int32_t nbytes) {
     uint32_t max_len;
     uint32_t flags;
 
-    // Wait for Enter key
-    while (!keyboard_new_line_ready);
+    // We're in a system call, so interrupts have been disabled.
+    // We need to temporarily enable interrupts so that we can
+    // actually fill the keyboard buffer.
+    cli_and_save(flags);
+    sti();
 
+    // Wait for Enter key
+    while (!keyboard_new_line_ready) {
+        asm volatile("hlt");
+    }
+
+    restore_flags(flags);
     cli_and_save(flags);
 
     // Read up to min(nbytes, number of bytes available in buffered line)

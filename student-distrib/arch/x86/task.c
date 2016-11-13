@@ -4,6 +4,25 @@
 #include <fs/fs.h>
 #include <tty/terminal.h>
 
+void open_stdin_and_stdout(pcb_t *pcb) {
+	// stdin
+	pcb->fa[0].flags = 1;
+	pcb->fa[0].fops.open = NULL;
+	pcb->fa[0].fops.close = terminal_close;
+	pcb->fa[0].fops.read = terminal_read;
+	pcb->fa[0].fops.write = terminal_write;
+	pcb->fa[0].file_position = 0;
+
+	// stdout
+	pcb->fa[1].flags = 1;
+	pcb->fa[1].fops.open = NULL;
+	pcb->fa[1].fops.close = terminal_close;
+	pcb->fa[1].fops.read = NULL;
+	pcb->fa[1].fops.write = terminal_write;
+	pcb->fa[1].file_position = 0;
+
+}
+
 void kernel_run_first_program(const int8_t* command) {
 	// Clear kernel PCBs
 	int i;
@@ -35,6 +54,8 @@ void kernel_run_first_program(const int8_t* command) {
 
 	// Prepare for context switch
 	set_kernel_stack(get_kernel_stack_base_from_slot(child_pcb->slot_num));
+
+	open_stdin_and_stdout(child_pcb);
 
 	switch_to_ring_3(0x8048000 - 4, entrypoint);
 }
@@ -125,11 +146,11 @@ inline void *get_current_kernel_stack_base() {
 	// and use bitmask to get the top of the current stack
 	// Then we can add 8kB to the value to get the bottom of the stack
 	int stack_var = 0;
-	return (void*) (((uint32_t) &stack_var & PCB_BITMASK) + KERNEL_STACK_SIZE);
+	return (void*) (((uint32_t) &stack_var & PCB_BITMASK) + KERNEL_STACK_SIZE - 4);
 }
 
 inline void *get_kernel_stack_base_from_slot(uint32_t pcb_slot) {
-	return (void*) (KERNEL_PAGE_END - (KERNEL_STACK_SIZE * pcb_slot + 1) + (KERNEL_STACK_SIZE - 4));
+	return (void*) (KERNEL_PAGE_END - (KERNEL_STACK_SIZE * (pcb_slot + 1)) + (KERNEL_STACK_SIZE - 4));
 }
 
 inline void *get_process_page_from_slot(uint32_t task_slot) {

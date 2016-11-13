@@ -1,4 +1,5 @@
 .data
+.align 4
 syscall_jump_table:
 .long syscall_halt, syscall_execute, syscall_read, syscall_write, syscall_open, syscall_close, syscall_getargs, syscall_vidmap, syscall_set_handler, syscall_sigreturn
 
@@ -7,6 +8,8 @@ syscall_jump_table:
 syscall_handler_wrapper:
 	# On the stack when this is called:
 	# ss, esp0, eflags, cs, eip
+
+	dec %eax
 
 	# syscall num check
 	cmpl $0, %eax
@@ -22,8 +25,7 @@ syscall_handler_wrapper:
 	push %edx
 	push %ecx
 	push %ebx
-	mov 32(%esp), %ebx
-	push %ebx
+	push %esp
 	cld
 	call *syscall_jump_table(, %eax, 4)
 	add $4, %esp
@@ -32,8 +34,8 @@ syscall_handler_wrapper:
 	pop %edx
 	pop %esi
 	pop %edi
-	ret
+	iret
 
 	invalid_syscall_num:
 	mov -1, %eax
-	ret
+	iret

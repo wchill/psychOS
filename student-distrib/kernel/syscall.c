@@ -1,6 +1,9 @@
 #include <kernel/syscall.h>
 #include <arch/x86/task.h>
+#include <fs/fs.h>
+#include <fs/ece391_fs.h>
 #include <lib/lib.h>
+#include <drivers/rtc.h>
 
 /* IMPORTANT
  * 
@@ -11,18 +14,21 @@
  * arguments even if they are not used (like for the rtc)
  */
 
-uint32_t KEYBOARD_FT 	= 0xAAAAAAAA; // TODO value of file type
-uint32_t FILE_FT 		= 2;
-uint32_t RTC_FT 		= 0;
-uint32_t TERMINAL_FT 	= 0xDDDDDDDD; // TODO value of file type
-uint32_t DIRECTORY_FT 	= 1;
+#define KEYBOARD_FT 0xAAAAAAAA // TODO value of file type
+#define FILE_FT 2
+#define RTC_FT 0
+#define TERMINAL_FT 0xDDDDDDDD // TODO value of file type
+#define DIRECTORY_FT 1
 
 int32_t syscall_open(uint32_t esp, const uint8_t *filename) {
 	
+	// get the process control block
+	pcb_t *PCB = get_pcb_from_esp((void*) esp);
+
 	// find the lowest index in the file array that is free
 	int32_t fd = -1, idx;
 	for(idx = 0 ; idx < 8 ; idx++) {
-		if(PCB->fa[idx]->flags == 0) {
+		if(PCB->fa[idx].flags == 0) {
 			fd = idx;
 			break;
 		}
@@ -38,56 +44,53 @@ int32_t syscall_open(uint32_t esp, const uint8_t *filename) {
 	// DNE
 	if(res < 0) return -1;
 
-	// get the program 
-	pcb_t *PCB = get_pcb_from_esp((void*) esp);
-
 	// fill in table pointer in file array at the index of the file descriptor
-	switch(res->file_type) {
+	switch(dentry.file_type) {
 		case KEYBOARD_FT:
-			PCB->fa[fd]->fops->open  = NULL; // TODO
-			PCB->fa[fd]->fops->close = NULL;
-			PCB->fa[fd]->fops->read  = NULL;
-			PCB->fa[fd]->fops->write = NULL;
+			PCB->fa[fd].fops.open  = NULL; // TODO
+			PCB->fa[fd].fops.close = NULL;
+			PCB->fa[fd].fops.read  = NULL;
+			PCB->fa[fd].fops.write = NULL;
 			break;
-		case FILE_SYSTEM_FT:
-			PCB->fa[fd]->fops->open  = file_open;
-			PCB->fa[fd]->fops->close = file_close;
-			PCB->fa[fd]->fops->read  = file_read;
-			PCB->fa[fd]->fops->write = file_write;
+		case FILE_FT:
+			PCB->fa[fd].fops.open  = file_open;
+			PCB->fa[fd].fops.close = file_close;
+			PCB->fa[fd].fops.read  = file_read;
+			PCB->fa[fd].fops.write = file_write;
 			break;
 		case RTC_FT:
-			PCB->fa[fd]->fops->open  = rtc_open;
-			PCB->fa[fd]->fops->close = rtc_close;
-			PCB->fa[fd]->fops->read  = rtc_read;
-			PCB->fa[fd]->fops->write = rtc_write;
+			PCB->fa[fd].fops.open  = rtc_open;
+			PCB->fa[fd].fops.close = rtc_close;
+			PCB->fa[fd].fops.read  = rtc_read;
+			PCB->fa[fd].fops.write = rtc_write;
 			break;
 		case TERMINAL_FT:
-			PCB->fa[fd]->fops->open  = NULL; // TODO
-			PCB->fa[fd]->fops->close = NULL;
-			PCB->fa[fd]->fops->read  = NULL;
-			PCB->fa[fd]->fops->write = NULL;
+			PCB->fa[fd].fops.open  = NULL; // TODO
+			PCB->fa[fd].fops.close = NULL;
+			PCB->fa[fd].fops.read  = NULL;
+			PCB->fa[fd].fops.write = NULL;
 			break;
 		case DIRECTORY_FT:
-			PCB->fa[fd]->fops->open  = dir_open;
-			PCB->fa[fd]->fops->close = dir_close;
-			PCB->fa[fd]->fops->read  = dir_read;
-			PCB->fa[fd]->fops->write = dir_write;
+			PCB->fa[fd].fops.open  = dir_open;
+			PCB->fa[fd].fops.close = dir_close;
+			PCB->fa[fd].fops.read  = dir_read;
+			PCB->fa[fd].fops.write = dir_write;
 			break;
 		default:
 			return -1;
 	}
 
 	// copy the inode over to the file array at the index of the file descriptor
-	PCB->fa[fd]->inode = res->inode_num;
+	PCB->fa[fd].inode = dentry.inode_num;
 
-	// copy the file position over to the file array at the index of the file descriptor
-	PCB->fa[fd]->file_position = dentry;
+	// set file position to 0
+	PCB->fa[fd].file_position = 0;
 
 	// mark this file descriptor as taken
-	PCB->fa[fd]->flags = 1;
+	PCB->fa[fd].flags = 1;
 
 	// call the close function
-	PCB->fa[fd]->fops->open(filename);
+	PCB->fa[fd].fops.open(filename);
 
 	// return file descriptor
 	return fd;
@@ -99,10 +102,10 @@ int32_t syscall_close(uint32_t esp, int32_t fd) {
 	pcb_t *PCB = get_pcb_from_esp((void*) esp);
 
 	// clear the file descriptor
-	PCB->fa[fd]->flags = 0;
+	PCB->fa[fd].flags = 0;
 
 	// call the close function
-	return PCB->fa[fd]->fops->close(fd);
+	return PCB->fa[fd].fops.close(fd);
 
 }
 
@@ -112,10 +115,10 @@ int32_t syscall_read(uint32_t esp, int32_t fd, void *buf, int32_t nbytes) {
 	pcb_t *PCB = get_pcb_from_esp((void*) esp);
 
 	// increment the file position
-	PCB->fa[fd]->file_position += nbytes;
+	PCB->fa[fd].file_position += nbytes;
 
 	// call the read function
-	return PCB->fa[fd]->fops->read(fd, buf, nbytes);
+	return PCB->fa[fd].fops.read(fd, buf, nbytes);
 
 }
 
@@ -125,10 +128,10 @@ int32_t syscall_write(uint32_t esp, int32_t fd, const void *buf, int32_t nbytes)
 	pcb_t *PCB = get_pcb_from_esp((void*) esp);
 
 	// increment the file position
-	PCB->fa[fd]->file_position += nbytes;
+	PCB->fa[fd].file_position += nbytes;
 
 	// call the read function
-	return PCB->fa[fd]->fops->write(fd, buf, nbytes);
+	return PCB->fa[fd].fops.write(fd, buf, nbytes);
 
 }
 
