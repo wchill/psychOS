@@ -19,21 +19,21 @@ syscall_handler_wrapper:
 
 	# Save general purpose registers
 	# Order of values goes like this on the stack (high -> low):
-	# ss, esp (process user-mode), eflags, cs, eip, edi, esi, edx, ecx, ebx, eax
+	# ss, esp0, eflags, cs, eip, ebp, edi, esi, edx, ecx, ebx, esp0
+	push %ebp
 	push %edi
 	push %esi
 	push %edx
 	push %ecx
 	push %ebx
-	push %esp
 	cld
 	call *syscall_jump_table(, %eax, 4)
-	add $4, %esp
 	pop %ebx
 	pop %ecx
 	pop %edx
 	pop %esi
 	pop %edi
+	pop %ebp
 	iret
 
 	invalid_syscall_num:

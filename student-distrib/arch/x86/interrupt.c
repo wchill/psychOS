@@ -5,6 +5,50 @@
 #include <tty/terminal.h>
 #include <arch/x86/x86_desc.h>
 
+
+static const char *human_readable_errors[] = {
+	"Divide-by-zero",
+	"Debug",
+	"Non-maskable interrupt",
+	"Breakpoint",
+	"Overflow",
+	"Bound range exceeded",
+	"Invalid opcode",
+	"Device not available",
+	"Double fault",
+	"Coprocessor segment overrun",
+	"Invalid TSS",
+	"Segment not present",
+	"Stack-segment fault",
+	"General protection fault",
+	"Page fault",
+	"Reserved",
+	"x87 Floating point exception",
+	"Alignment check",
+	"Machine check",
+	"SIMD Floating point exception",
+	"Virtualization exception",
+	"Reserved",
+	"Reserved",
+	"Reserved",
+	"Reserved",
+	"Reserved",
+	"Reserved",
+	"Reserved",
+	"Reserved",
+	"Reserved",
+	"Reserved",
+	"Security Exception",
+	"Triple fault"
+};
+
+static const int has_error_code[] = {
+	0, 0, 0, 0, 0, 0, 0, 0,
+	1, 0, 1, 1, 1, 1, 1, 0,
+	0, 1, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 1, 0
+};
+
 /**
  * install_interrupt_handler
  * Installs interrupt handler for a given interrupt number.
@@ -35,45 +79,10 @@ void install_interrupt_handler(uint8_t interrupt_num, void *handler, uint8_t seg
 	idt[interrupt_num] = exception_handle_desc;
 }
 
-/**
- * page_fault_handler
- * Handles just the page fault exception by printing data to screen
- *
- * @param eax      Register value (printed to screen)
- * @param ebx      Register value (printed to screen)
- * @param ecx      Register value (printed to screen)
- * @param edx      Register value (printed to screen)
- * @param esi      Register value (printed to screen)
- * @param edi      Register value (printed to screen)
- * @param ebp      Register value (printed to screen)
- * @param esp      Register value (printed to screen)
- * @param int_num  The interrupt number
- * @param error    The error number: 8, 10-14, 17, or 30. Other exceptions in range 0-31 just use error number 0.
- * @param eip      Register value (printed to screen)
- * @param cs       Not used here. It's still a parameter since it's on the stack.
- * @param eflags   Flags values (printed to screen)
- */
-static void page_fault_handler(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
-	uint32_t esi, uint32_t edi, uint32_t ebp, uint32_t esp,
-	uint32_t int_num, uint32_t error, uint32_t eip, uint32_t cs, uint32_t eflags) {
+const char *interpret_exception(uint32_t int_num) {
+	if(int_num >= 32) return "Unknown";
 
-	uint32_t virtual_addr;
-	asm volatile("movl   %%cr2, %0"
-			: "=a"(virtual_addr)
-			: 
-			: "memory" );
-
-	clear_terminal();
-	printf("---------------------------AN EXCEPTION HAS OCCURRED----------------------------\n\n");
-	printf(" An exception has occurred: PAGE_FAULT_IN_NONPAGED_AREA (0xE)\n", int_num);
-	printf(" The associated error code is: 0x%#x\n\n", error);
-	printf(" An attempt was made to access the following virtual address: 0x%#x\n", virtual_addr);
-	printf("\n\n REGISTERS:\n");
-	printf(" eax: 0x%#x    ebx:    0x%#x\n", eax, ebx);
-	printf(" ecx: 0x%#x    edx:    0x%#x\n", ecx, edx);
-	printf(" esi: 0x%#x    edi:    0x%#x\n", esi, edi);
-	printf("\n");
-	printf(" eip: 0x%#x    eflags: 0x%#x\n", eip, eflags);
+	return human_readable_errors[int_num];
 }
 
 /**
@@ -99,25 +108,38 @@ void exception_handler(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
 	uint32_t int_num, uint32_t error,
 	uint32_t eip, uint32_t cs, uint32_t eflags) {
 
-	// TODO: check if the values of these registers are actually correct
+	clear_terminal();
+	printf("---------------------------AN EXCEPTION HAS OCCURRED-----------------------------\n\n");
+	printf(" An exception has occurred: %s (0x%x)\n", interpret_exception(int_num), int_num);
+
+	if(has_error_code[int_num]) {
+		printf(" The associated error code is: 0x%#x\n", error);
+	}
+	printf("\n");
 
 	switch(int_num) {
 		case 0xE:
-			page_fault_handler(eax, ebx, ecx, edx, esi, edi, ebp, esp, int_num, error, eip, cs, eflags);
+			{
+				uint32_t virtual_addr;
+				asm volatile(
+					"movl   %%cr2, %0"
+					: "=a"(virtual_addr)
+					: 
+					: "memory"
+				);
+				printf("An attempt was made to access the following virtual address: 0x%#x\n\n", virtual_addr);
+			}
 			break;
 		default:
-			clear_terminal();
-			printf("---------------------------AN EXCEPTION HAS OCCURRED-----------------------------\n\n");
-			printf(" An exception has occurred: 0x%x\n", int_num);
-			printf(" The associated error code is: 0x%#x\n", error);
-			printf("\n\n REGISTERS:\n");
-			printf(" eax: 0x%#x    ebx:    0x%#x\n", eax, ebx);
-			printf(" ecx: 0x%#x    edx:    0x%#x\n", ecx, edx);
-			printf(" esi: 0x%#x    edi:    0x%#x\n", esi, edi);
-			printf("\n");
-			printf(" eip: 0x%#x    eflags: 0x%#x\n", eip, eflags);
 			break;
 	}
+	printf(" REGISTERS:\n");
+	printf(" eax: 0x%#x    ebx:    0x%#x\n", eax, ebx);
+	printf(" ecx: 0x%#x    edx:    0x%#x\n", ecx, edx);
+	printf(" esi: 0x%#x    edi:    0x%#x\n", esi, edi);
+	printf(" esp: 0x%#x    ebp:    0x%#x\n", esp, ebp);
+	printf("\n");
+	printf(" eip: 0x%#x    eflags: 0x%#x\n", eip, eflags);
 
 	// loop forever
 	for(;;) {

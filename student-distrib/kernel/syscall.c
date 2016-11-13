@@ -20,14 +20,14 @@
 #define TERMINAL_FT 0xDDDDDDDD // TODO value of file type
 #define DIRECTORY_FT 1
 
-int32_t syscall_open(uint32_t esp, const uint8_t *filename) {
+int32_t syscall_open(const uint8_t *filename) {
 	
 	// get the process control block
-	pcb_t *PCB = get_pcb_from_esp((void*) esp);
+	pcb_t *PCB = get_current_pcb();
 
 	// find the lowest index in the file array that is free
 	int32_t fd = -1, idx;
-	for(idx = 0 ; idx < 8 ; idx++) {
+	for(idx = 0 ; idx < MAX_FILE_DESCRIPTORS ; idx++) {
 		if(PCB->fa[idx].flags == 0) {
 			fd = idx;
 			break;
@@ -46,12 +46,6 @@ int32_t syscall_open(uint32_t esp, const uint8_t *filename) {
 
 	// fill in table pointer in file array at the index of the file descriptor
 	switch(dentry.file_type) {
-		case KEYBOARD_FT:
-			PCB->fa[fd].fops.open  = NULL; // TODO
-			PCB->fa[fd].fops.close = NULL;
-			PCB->fa[fd].fops.read  = NULL;
-			PCB->fa[fd].fops.write = NULL;
-			break;
 		case FILE_FT:
 			PCB->fa[fd].fops.open  = file_open;
 			PCB->fa[fd].fops.close = file_close;
@@ -63,12 +57,6 @@ int32_t syscall_open(uint32_t esp, const uint8_t *filename) {
 			PCB->fa[fd].fops.close = rtc_close;
 			PCB->fa[fd].fops.read  = rtc_read;
 			PCB->fa[fd].fops.write = rtc_write;
-			break;
-		case TERMINAL_FT:
-			PCB->fa[fd].fops.open  = NULL; // TODO
-			PCB->fa[fd].fops.close = NULL;
-			PCB->fa[fd].fops.read  = NULL;
-			PCB->fa[fd].fops.write = NULL;
 			break;
 		case DIRECTORY_FT:
 			PCB->fa[fd].fops.open  = dir_open;
@@ -96,10 +84,10 @@ int32_t syscall_open(uint32_t esp, const uint8_t *filename) {
 	return fd;
 }
 
-int32_t syscall_close(uint32_t esp, int32_t fd) {
+int32_t syscall_close(int32_t fd) {
 
 	// get the process control block
-	pcb_t *PCB = get_pcb_from_esp((void*) esp);
+	pcb_t *PCB = get_current_pcb();
 
 	// clear the file descriptor
 	PCB->fa[fd].flags = 0;
@@ -109,10 +97,10 @@ int32_t syscall_close(uint32_t esp, int32_t fd) {
 
 }
 
-int32_t syscall_read(uint32_t esp, int32_t fd, void *buf, int32_t nbytes) {
+int32_t syscall_read(int32_t fd, void *buf, int32_t nbytes) {
 
 	// get the process control block
-	pcb_t *PCB = get_pcb_from_esp((void*) esp);
+	pcb_t *PCB = get_current_pcb();
 
 	// increment the file position
 	PCB->fa[fd].file_position += nbytes;
@@ -122,10 +110,10 @@ int32_t syscall_read(uint32_t esp, int32_t fd, void *buf, int32_t nbytes) {
 
 }
 
-int32_t syscall_write(uint32_t esp, int32_t fd, const void *buf, int32_t nbytes) {
+int32_t syscall_write(int32_t fd, const void *buf, int32_t nbytes) {
 
 	// get the process control block
-	pcb_t *PCB = get_pcb_from_esp((void*) esp);
+	pcb_t *PCB = get_current_pcb();
 
 	// increment the file position
 	PCB->fa[fd].file_position += nbytes;
@@ -135,10 +123,10 @@ int32_t syscall_write(uint32_t esp, int32_t fd, const void *buf, int32_t nbytes)
 
 }
 
-int32_t syscall_execute(uint32_t esp, const int8_t *command, uint32_t ecx, uint32_t edx, uint32_t esi, uint32_t edi, uint32_t eip, uint32_t cs, uint32_t eflags) {
+int32_t syscall_execute(const int8_t *command) {
 	static uint32_t pid = 1;
 
-	pcb_t *parent_pcb = get_pcb_from_esp((void*) esp);
+	pcb_t *parent_pcb = get_current_pcb();
 	pcb_t *child_pcb = NULL;
 
 	// Find a free PCB slot
@@ -165,6 +153,7 @@ int32_t syscall_execute(uint32_t esp, const int8_t *command, uint32_t ecx, uint3
 	parent_pcb->child = child_pcb;
 	child_pcb->in_use = 1;
 	child_pcb->pid = pid++;
+	open_stdin_and_stdout(child_pcb);
 
 	// Save args in PCB
 	parse_args(command, child_pcb->args);
@@ -175,30 +164,82 @@ int32_t syscall_execute(uint32_t esp, const int8_t *command, uint32_t ecx, uint3
 
 	// Prepare for context switch
 	set_kernel_stack(get_kernel_stack_base_from_slot(child_pcb->slot_num));
+	asm volatile(
+		"mov %%esp, %0\r\n"
+		"mov %%ebp, %1\r\n"
+		: "=g"(parent_pcb->regs.esp), "=g"(parent_pcb->regs.ebp)
+		:
+		: "memory"
+	);
 
 	// Switch to user mode
+	switch_to_ring_3(PROCESS_LINK_START, entrypoint);
 
-	// Come back here after halt, return retval
+	// We'll never come back here
+	return -1;
+}
+
+int32_t syscall_halt(uint8_t status) {
+	pcb_t *child_pcb = get_current_pcb();
+	pcb_t *parent_pcb = child_pcb->parent;
+
+	child_pcb->in_use = 0;
+	int i;
+	for(i = 0; i < MAX_FILE_DESCRIPTORS; i++) {
+		if(child_pcb->fa[i].flags) {
+			child_pcb->fa[i].fops.close(i);
+			child_pcb->fa[i].flags = 0;
+		}
+	}
+
+	if(parent_pcb == NULL) {
+		void *current_kernel_stack_base = get_current_kernel_stack_base();
+		const int8_t cmd[] = "shell\0";
+		static pd_entry temp_pd[NUM_PD_ENTRIES] __attribute__((aligned (FOUR_KB_ALIGNED)));
+
+	    initialize_paging_structs(temp_pd);
+	    enable_paging(temp_pd);
+
+		asm volatile(
+			"mov %0, %%esp\r\n"
+			"push %1\r\n"
+			"push $0\r\n"
+			"jmp %2\r\n"
+			:
+			: "r"(current_kernel_stack_base), "r"(cmd), "r"(kernel_run_first_program)
+			: "memory"
+		);
+	}
+
+	enable_paging(parent_pcb->process_pd);
+	set_kernel_stack(get_kernel_stack_base_from_slot(parent_pcb->slot_num));
+
+	asm volatile(
+		"mov %0, %%esp\r\n"
+		"push %2\r\n"
+		"mov %1, %%ebp\r\n"
+		"pop %%eax\r\n"
+		"leave\r\n"
+		"ret\r\n"
+		:
+		: "r"(parent_pcb->regs.esp), "r"(parent_pcb->regs.ebp), "r"((uint32_t) status)
+		: "memory", "cc");
 
 	return -1;
 }
 
-int32_t syscall_halt(uint32_t esp, uint8_t status) {
+int32_t syscall_getargs(uint8_t *buf, int32_t nbytes) {
 	return -1;
 }
 
-int32_t syscall_getargs(uint32_t esp, uint8_t *buf, int32_t nbytes) {
+int32_t syscall_vidmap(uint8_t **screen_start) {
 	return -1;
 }
 
-int32_t syscall_vidmap(uint32_t esp, uint8_t **screen_start) {
+int32_t syscall_set_handler(int32_t signum, void *handler_address) {
 	return -1;
 }
 
-int32_t syscall_set_handler(uint32_t esp, int32_t signum, void *handler_address) {
-	return -1;
-}
-
-int32_t syscall_sigreturn(uint32_t esp) {
+int32_t syscall_sigreturn() {
 	return -1;
 }

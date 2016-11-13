@@ -10,7 +10,7 @@ void open_stdin_and_stdout(pcb_t *pcb) {
 	pcb->fa[0].fops.open = NULL;
 	pcb->fa[0].fops.close = terminal_close;
 	pcb->fa[0].fops.read = terminal_read;
-	pcb->fa[0].fops.write = terminal_write;
+	pcb->fa[0].fops.write = NULL;
 	pcb->fa[0].file_position = 0;
 
 	// stdout
@@ -20,7 +20,6 @@ void open_stdin_and_stdout(pcb_t *pcb) {
 	pcb->fa[1].fops.read = NULL;
 	pcb->fa[1].fops.write = terminal_write;
 	pcb->fa[1].file_position = 0;
-
 }
 
 void kernel_run_first_program(const int8_t* command) {
@@ -32,14 +31,14 @@ void kernel_run_first_program(const int8_t* command) {
 		current_pcb->slot_num = i;
 	}
 
-	// Initialize terminal for programs to use
-	terminal_open("stdin");
-
 	pcb_t *child_pcb = get_pcb_from_slot(0);
 
 	// Process paging
 	setup_process_paging(child_pcb->process_pd, get_process_page_from_slot(child_pcb->slot_num));
 	enable_paging(child_pcb->process_pd);
+
+	// Initialize terminal for programs to use
+	terminal_open("stdin");
 
 	uint32_t entrypoint = load_program_into_slot(command, child_pcb->slot_num);
 	if(entrypoint == NULL) return;
@@ -49,6 +48,7 @@ void kernel_run_first_program(const int8_t* command) {
 	child_pcb->child = NULL;
 	child_pcb->in_use = 1;
 	child_pcb->pid = 0;
+	open_stdin_and_stdout(child_pcb);
 
 	parse_args(command, child_pcb->args);
 
@@ -57,7 +57,7 @@ void kernel_run_first_program(const int8_t* command) {
 
 	open_stdin_and_stdout(child_pcb);
 
-	switch_to_ring_3(0x8048000 - 4, entrypoint);
+	switch_to_ring_3(PROCESS_LINK_START, entrypoint);
 }
 
 void set_kernel_stack(const void *stack) {
@@ -134,11 +134,16 @@ uint32_t load_program_into_slot(const int8_t *filename, uint32_t pcb_slot) {
 }
 
 inline pcb_t *get_pcb_from_esp(void *process_esp) {
-	return (pcb_t *) ((uint32_t) process_esp & PCB_BITMASK);
+	return (pcb_t *) ((uint32_t) (process_esp - 1) & PCB_BITMASK);
 }
 
 inline pcb_t *get_pcb_from_slot(uint32_t pcb_slot) {
 	return (pcb_t*) (KERNEL_PAGE_END - (KERNEL_STACK_SIZE * (pcb_slot + 1)));
+}
+
+inline pcb_t *get_current_pcb() {
+	int stack_var = 0;
+	return get_pcb_from_esp(&stack_var);
 }
 
 inline void *get_current_kernel_stack_base() {
@@ -146,11 +151,11 @@ inline void *get_current_kernel_stack_base() {
 	// and use bitmask to get the top of the current stack
 	// Then we can add 8kB to the value to get the bottom of the stack
 	int stack_var = 0;
-	return (void*) (((uint32_t) &stack_var & PCB_BITMASK) + KERNEL_STACK_SIZE - 4);
+	return (void*) (((uint32_t) &stack_var & PCB_BITMASK) + KERNEL_STACK_SIZE);
 }
 
 inline void *get_kernel_stack_base_from_slot(uint32_t pcb_slot) {
-	return (void*) (KERNEL_PAGE_END - (KERNEL_STACK_SIZE * (pcb_slot + 1)) + (KERNEL_STACK_SIZE - 4));
+	return (void*) (KERNEL_PAGE_END - (KERNEL_STACK_SIZE * (pcb_slot + 1)) + KERNEL_STACK_SIZE);
 }
 
 inline void *get_process_page_from_slot(uint32_t task_slot) {

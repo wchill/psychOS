@@ -304,7 +304,7 @@ uint32_t terminal_close(int32_t fd) {
     cli_and_save(flags);
 
     circular_buffer_clear((circular_buffer_t*) &keyboard_buffer);
-    clear_terminal();
+    //clear_terminal();
 
     restore_flags(flags);
     // disable_irq(KEYBOARD_IRQ);

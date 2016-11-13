@@ -11,8 +11,10 @@
 #define PROCESS_PAGE_SIZE 0x400000
 #define KERNEL_STACK_SIZE 0x2000
 #define MAX_PROCESSES 2
+#define MAX_FILE_DESCRIPTORS 8
 
 #define PROCESS_LINK_OFFSET 0x48000
+#define PROCESS_LINK_START 0x8048000
 
 typedef struct pcb_t pcb_t;
 
@@ -45,7 +47,7 @@ struct pcb_t {
 		uint32_t eip;
 		uint32_t eflags;
 	} regs;
-	file_t fa[8];
+	file_t fa[MAX_FILE_DESCRIPTORS];
 	int8_t args[128];
 	uint32_t slot_num;
 	uint32_t pid;
@@ -66,6 +68,7 @@ void set_kernel_stack(const void *stack);
 uint32_t get_executable_entrypoint(const void *executable);
 pcb_t *get_pcb_from_esp(void *process_esp);
 pcb_t *get_pcb_from_slot(uint32_t pcb_slot);
+pcb_t *get_current_pcb();
 void *get_process_page_from_slot(uint32_t task_slot);
 void *get_current_kernel_stack_base();
 void *get_kernel_stack_base_from_slot(uint32_t pcb_slot);
