@@ -93,7 +93,7 @@ void read_files_by_name(){
 
     // Read in file entry
     dentry_t dentry;
-    int32_t res = read_dentry_by_name((uint8_t*) "frame0.txt", &dentry);
+    int32_t res = read_dentry_by_name("frame0.txt", &dentry);
     int32_t num_read = 0;
     if(res >= 0) {
         res = 0;
@@ -176,15 +176,17 @@ void read_file_by_index(){
  *   SIDE EFFECTS: none
  */ 
 void start_rtc_test() {
-    rtc_open();             // tests "rtc_open". If our RTC interrupts occur that means 'rtc_open' worked correctly
-    terminal_open(0);       // Need keyboard for test, so we open it. PARAMETER MAY CAUSE ERRORS IN 3.3, 3.4, 3.5 
+    rtc_open(NULL, "rtc");             // tests "rtc_open". If our RTC interrupts occur that means 'rtc_open' worked correctly
 
     /* Update htz */
     htz <<= 1;              // doubles value. htz must be power of 2
     if (htz > MAX_FREQ)
         htz = MIN_FREQ;
 
-    rtc_write(htz);         // tests "rtc_write".
+    uint32_t temp_htz = htz;
+    rtc_write(0, &temp_htz, 4);         // tests "rtc_write".
+
+    set_rtc_test_enabled(1);
 }
 
 /*
@@ -204,7 +206,8 @@ void stop_rtc_test(){
     // Clear buffer and screen
     terminal_close(0);
 
-    disable_irq(RTC_IRQ);   // we were told not to disable the RTC, but I did anyway...
+    rtc_close(NULL);
+    set_rtc_test_enabled(0);
 
     restore_flags(flags);
 }

@@ -8,56 +8,43 @@
 
 /*
  * file_open
- * For now, just finds the file represents by filename but does nothing with it.
+ * No-op (already opened in syscall)
  * 
- * @param filename   the name of the file to open
+ * @param f 		the file struct for the file to open
  * 
- * @returns For now, returns -1. Will eventually return file descriptor (FD)
+ * @returns 0
  */
-int32_t file_open(const uint8_t *filename) {
-	// TODO: Return file FD
-	dentry_t dentry;
-	int32_t res = read_dentry_by_name(filename, &dentry);
-
-	if(res < 0) return -1;
-
-	return -1;
+int32_t file_open(file_t *f, const int8_t *filename) {
+	return 0;
 }
 
 /*
  * file_close
- * For now, does nothing and just returns -1.
+ * No-op (already closed in syscall)
  * 
- * @param fd   the file descriptor of the file to close
+ * @param f 		the file struct for the file to close
  * 
- * @returns For now, returns -1.
+ * @returns 0
  */
-int32_t file_close(int32_t fd) {
-	return -1;
+int32_t file_close(file_t *f) {
+	return 0;
 }
 
 /*
  * file_read
  * Reads nbytes from file represent by fd to provided buffer
  * 
- * @param fd      the file descriptor of the file to read.
- * @param buf     the buffer to read nbytes into.
- * @param nbytes  the number of bytes to read into the provided buffer.
+ * @param f 		the file struct for the file to read from
+ * @param buf     	the buffer to read nbytes into.
+ * @param nbytes  	the number of bytes to read into the provided buffer.
  * 
  * @returns       number of bytes read (may be less than nbytes), or -1 for failure
  */
-int32_t file_read(int32_t fd, void *buf, int32_t nbytes) {
-	// TODO: Handle file descriptor
-
-	// TODO: Translate FD to inode
-	uint32_t inode = 1;
-	static int num_read = 0;
-
-	int32_t res = read_data(inode, num_read, buf, nbytes);
+int32_t file_read(file_t *f, void *buf, int32_t nbytes) {
+	int32_t res = read_data(f->inode, f->file_position, buf, nbytes);
 	if(res < 0) return -1;
-	if(res == 0) return 0;
 
-	num_read += res;
+	f->file_position += res;
 
 	return res;
 }
@@ -66,13 +53,14 @@ int32_t file_read(int32_t fd, void *buf, int32_t nbytes) {
  * file_write
  * For now, does nothing and just returns -1.
  * 
- * @param fd      the file descriptor of the file to write to.
- * @param buf     the buffer to read nbytes from.
- * @param nbytes  the number of bytes to write from buffer to file.
+ * @param f 		the file struct for the file to write to
+ * @param buf     	the buffer to read nbytes from.
+ * @param nbytes  	the number of bytes to write from buffer to file.
  * 
  * @returns       number of bytes written (may be less than nbytes), or -1 for failure
  */
-int32_t file_write(int32_t fd, const void *buf, int32_t nbytes) {
+int32_t file_write(file_t *f, const void *buf, int32_t nbytes) {
+	// Not supported - read only
 	return -1;
 }
 
@@ -89,7 +77,7 @@ int32_t file_write(int32_t fd, const void *buf, int32_t nbytes) {
  */
 int32_t read_file_by_name(const char *filename, void *buf, uint32_t nbytes) {
     dentry_t dentry;
-    int32_t res = read_dentry_by_name((uint8_t*) filename, &dentry);
+    int32_t res = read_dentry_by_name(filename, &dentry);
 
     if(res < 0) return -1;
 
@@ -102,48 +90,44 @@ int32_t read_file_by_name(const char *filename, void *buf, uint32_t nbytes) {
 
 /*
  * dir_open
- * For now, just returns -1.
+ * No-op (already opened in syscall)
  * 
- * @param filename   the name of the directory entry to open
+ * @param f 	the file struct for the directory to open
  * 
- * @returns For now, returns -1. Will eventually return file descriptor (FD)
+ * @returns 0
  */
-int32_t dir_open(const uint8_t *filename) {
-	// TODO: Return directory FD
-	return -1;
+int32_t dir_open(file_t *f, const int8_t *filename) {
+	return 0;
 }
 
 /*
  * dir_close
- * For now, does nothing and just returns -1.
+ * No-op (already closed in syscall)
  * 
- * @param fd   the file descriptor of the directory to close
+ * @param f 	the file struct for the directory to close
  * 
- * @returns For now, returns -1.
+ * @returns 0
  */
-int32_t dir_close(int32_t fd) {
-	return -1;
+int32_t dir_close(file_t *f) {
+	return 0;
 }
 
 /*
  * dir_read
- * For now, reads the data at index 0. Will eventually use file descriptor.
+ * Reads the name of a file in the directory.
  * 
- * @param fd      the file descriptor of the directory to read.
- * @param buf     the buffer to read nbytes into.
- * @param nbytes  the number of bytes to read into the provided buffer.
+ * @param f 		the file struct for the directory to read from
+ * @param buf     	the buffer to read nbytes into.
+ * @param nbytes  	the number of bytes to read into the provided buffer.
  * 
- * @returns       number of bytes read (may be less than nbytes), or -1 for failure
+ * @returns       number of bytes read (may be less than nbytes), or 0 if end is reached. -1 on failure
  */
-int32_t dir_read(int32_t fd, void *buf, int32_t nbytes) {
-	// TODO: Tie the index to the file descriptor
-	static int index_num = 0;
-
+int32_t dir_read(file_t *f, void *buf, int32_t nbytes) {
     dentry_t dentry;
-    int32_t res = read_dentry_by_index(index_num, &dentry);
-    if(res < 0) return -1;
+    int32_t res = read_dentry_by_index(f->file_position, &dentry);
+    if(res < 0) return 0;
 
-    index_num++;
+    f->file_position++;
 
     int num_bytes_to_copy = MAX_FILE_NAME_LENGTH;
     if(num_bytes_to_copy > nbytes) num_bytes_to_copy = nbytes;
@@ -155,12 +139,13 @@ int32_t dir_read(int32_t fd, void *buf, int32_t nbytes) {
  * dir_write
  * For now, does nothing and just returns -1.
  * 
- * @param fd      the file descriptor of the file to write to.
- * @param buf     the buffer to read nbytes from.
- * @param nbytes  the number of bytes to write from buffer to file.
+ * @param f 		the file struct for the directory to write to
+ * @param buf     	the buffer to read nbytes from.
+ * @param nbytes  	the number of bytes to write from buffer to file.
  * 
  * @returns       number of bytes written (may be less than nbytes), or -1 for failure
  */
-int32_t dir_write(int32_t fd, const void *buf, int32_t nbytes) {
+int32_t dir_write(file_t *f, const void *buf, int32_t nbytes) {
+	// Not supported - read only
 	return -1;
 }

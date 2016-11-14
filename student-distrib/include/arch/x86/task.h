@@ -3,6 +3,7 @@
 
 #include <types.h>
 #include <arch/x86/paging.h>
+#include <fs/fs.h>
 
 #define PCB_BITMASK (~0x1FFF)
 #define ELF_MAGIC_HEADER "\x7f\x45\x4c\x46"
@@ -17,21 +18,6 @@
 #define PROCESS_LINK_START 0x8048000
 
 typedef struct pcb_t pcb_t;
-
-typedef struct file_ops {
-    int32_t (* open) (const uint8_t * filename);
-    int32_t (* read) (int32_t fd, void * buf, int32_t nbytes);
-    int32_t (* write) (int32_t fd, const void * buf, int32_t nbytes);
-    int32_t (* close) (int32_t fd);
-    // TODO other sys calls
-} file_ops;
-
-typedef struct file_t {
-    file_ops    fops;          // a pointer to methods that we can use to manipulate file data (open, close, read, write)
-    uint32_t    file_position; // a pointer within file. Will tell us where to read/write within the file.
-    uint32_t    flags;         // in our case it's not for synchronization. It will be used to indicate if file descriptor is busy or free
-    uint32_t    inode;         // a number that indicates which file we are talking about.
-} file_t;
 
 struct pcb_t {
 	pd_entry process_pd[NUM_PD_ENTRIES] __attribute__((aligned (FOUR_KB_ALIGNED)));
@@ -62,6 +48,7 @@ typedef struct task_kernel_stack_t {
 	uint8_t stack[KERNEL_STACK_SIZE - sizeof(pcb_t)];
 } task_kernel_stack_t;
 
+void open_stdin_and_stdout();
 void kernel_run_first_program(const int8_t* command);
 
 void set_kernel_stack(const void *stack);

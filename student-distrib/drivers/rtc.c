@@ -13,6 +13,7 @@
 */
 
 static volatile int rtc_tick_flag = 0;	/* Flag that waits for RTC tick. 1 = waiting for tick. 0 = tick occured */
+static volatile int rtc_test_enabled = 0;
 
 /*
 * void test_rtc(void)
@@ -25,6 +26,23 @@ static void
 test_rtc(void)
 {
 	putc('1');
+}
+
+
+/*
+ * set_rtc_test_enabled
+ *   DESCRIPTION:  set whether RTC test is running.
+ *   INPUTS:       enabled - 1 if test is running, else 0
+ *   OUTPUTS:      none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: enables RTC test
+ */  
+void set_rtc_test_enabled(int enabled) {
+	uint32_t flags;
+
+    cli_and_save(flags);
+	rtc_test_enabled = enabled;
+	restore_flags(flags);
 }
 
 /*
@@ -40,7 +58,9 @@ void rtc_handler() {
 	inportb(RTC_DATA_PORT);
 
 	//test_interrupts(); // This causes screen to flash. Can comment it out to stop flashing.
-	test_rtc();     
+	if(rtc_test_enabled) {
+		test_rtc();     
+	}
 
 	rtc_tick_flag = 0; // Rodney: newly added for 3.2
 	
@@ -50,19 +70,16 @@ void rtc_handler() {
 /*
  * rtc_open
  *   DESCRIPTION:  Initializes the RTC with a frequency of 2 Hz (TA Rohan's suggestion)
- *   INPUTS:       none
+ *   INPUTS:       f - file struct representing an RTC
+ *  				filename - name of RTC file
  *   OUTPUTS:      none
  *   RETURN VALUE: -1 on failure
  *				    0 on success (for now we are always succesful)
  *   SIDE EFFECTS: changes the frequency of the RTC to 2 Hz
  */ 
-int32_t rtc_open() {
-	// TODO checkpoint 3 File Descriptor Table (FDT)
-
-	char prev;	// just a temporary variable.
-
+int32_t rtc_open(file_t *f, const int8_t * filename) {
 	outportb(RTC_STATUS_PORT, RTC_DISABLE_NMI | RTC_REG_B); 	// select register B, and disable NMI
-	prev = inportb(RTC_DATA_PORT);								// read the current value of register B
+	char prev = inportb(RTC_DATA_PORT);							// read the current value of register B
 	outportb(RTC_STATUS_PORT, RTC_DISABLE_NMI | RTC_REG_B);		// set the index again (a read will reset the index to register D)
 	outportb(RTC_DATA_PORT, prev | RTC_ENABLE_INTERRUPTS);		// write the previous value ORed with 0x40. This turns on bit 6 of register B
 
@@ -70,7 +87,8 @@ int32_t rtc_open() {
 	install_interrupt_handler(IRQ_INT_NUM(RTC_IRQ), rtc_handler_wrapper, KERNEL_CS, PRIVILEGE_KERNEL);
 	enable_irq(RTC_IRQ);
 	
-	rtc_write(MIN_FREQ);
+	uint32_t htz = MIN_FREQ;
+	rtc_write(f, &htz, 4);
 
 	return 0;
 }
@@ -84,37 +102,51 @@ int32_t rtc_open() {
  *				    0 on success
  *   SIDE EFFECTS: changes the frequency of the RTC to 2 Hz
  */ 
-int32_t rtc_close() {
-	// TODO checkpoint 3 File Descriptor Table (FDT)
-
-	return rtc_write(MIN_FREQ);
+int32_t rtc_close(file_t *f) {
+	uint32_t htz = MIN_FREQ;
+	return rtc_write(f, &htz, 4);
 }
 
 /*
  * rtc_read
  *   DESCRIPTION:  Returns (only when) the next RTC tick occurs
- *   INPUTS:       none
+ *   INPUTS:       f - file struct representing an RTC
+ *  				buf - buffer to read to
+ * 					nbytes - number of bytes to read
  *   OUTPUTS:      none
  *   RETURN VALUE: 0
  *   SIDE EFFECTS: none
  */ 
-int32_t rtc_read() {
+int32_t rtc_read(file_t *f, void *buf, int32_t nbytes) {
+
+	uint32_t flags;
+
+    // We're in a system call, so interrupts have been disabled.
+    // We need to temporarily enable interrupts so that we can
+    // actually receive the RTC tick.
+    cli_and_save(flags);
+    sti();
+
 	rtc_tick_flag = 1;			// set flag to wait for RTC tick
 	while(rtc_tick_flag);		// wait for RTC tick
+
+	restore_flags(flags);
 	return 0;					// acknowledge RTC tick
 }
 
 /*
  * rtc_write
  *   DESCRIPTION:  Changes the frequency of the RTC
- *   INPUTS:       htz - frequency in Hz. Must be between 1 and 1024 inclusive, and also be a power of 2
+ *   INPUTS:       f - file struct representing an RTC
+ *  				buf - buffer to write
+ * 					nbytes - number of bytes to write
  *   OUTPUTS:      none
  *   RETURN VALUE: -1 on failure
  *				    0 on success
  *   SIDE EFFECTS: changes the frequency of the RTC
  */ 
-int32_t rtc_write(uint32_t htz) {
-	int     temp = htz;						// temp variable to calculate rate
+int32_t rtc_write(file_t *f, const void *buf, int32_t nbytes) {
+	int     htz = *((uint32_t*) buf);		// hertz
 	uint8_t rate = 15;						// rate passed to the RTC. Rate of 15 corresponds to 2 Hz. We use formula: htz = 32768 >> (rate - 1)
 	char    prev;							// just a temporary variable
 
@@ -125,8 +157,8 @@ int32_t rtc_write(uint32_t htz) {
 		return -1;			
 
 	/* Calculate appropriate 'rate' value for the htz we want */
-	while (temp != MIN_FREQ){
-		temp >>= 1;							// divides by 2
+	while (htz != MIN_FREQ){
+		htz >>= 1;							// divides by 2
 		rate--;
 	}
 

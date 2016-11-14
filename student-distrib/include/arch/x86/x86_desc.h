@@ -27,6 +27,27 @@
 #define PRIVILEGE_KERNEL 0
 #define PRIVILEGE_USER 3
 
+/* EFLAGS register bits */
+#define EFLAGS_CARRY		0x1
+#define EFLAGS_PARITY		0x4
+#define EFLAGS_ADJUST		0x10
+#define EFLAGS_ZERO			0x40
+#define EFLAGS_SIGN 		0x80
+#define EFLAGS_TRAP 		0x100
+#define EFLAGS_INTERRUPT	0x200
+#define EFLAGS_DIRECTION 	0x400
+#define EFLAGS_OVERFLOW		0x800
+#define EFLAGS_IOPL_1 		0x1000
+#define EFLAGS_IOPL_2 		0x2000
+#define EFLAGS_NESTED_TASK 	0x4000
+#define EFLAGS_8086 		0x8000
+#define EFLAGS_RESUME 		0x10000
+#define EFLAGS_V8086		0x20000
+#define EFLAGS_ALIGNMENT	0x40000
+#define EFLAGS_VIRTUAL_INT 	0x80000
+#define EFLAGS_PENDING_VINT 0x100000
+#define EFLAGS_CPUID 		0x200000
+
 #ifndef ASM
 
 /* This structure is used to load descriptor base registers

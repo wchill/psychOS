@@ -2,21 +2,22 @@
 #include <lib/lib.h>
 #include <arch/x86/task.h>
 #include <fs/fs.h>
+#include <lib/file.h>
 #include <tty/terminal.h>
 
 void open_stdin_and_stdout(pcb_t *pcb) {
 	// stdin
-	pcb->fa[0].flags = 1;
+	pcb->fa[0].flags = FILE_IN_USE;
 	pcb->fa[0].fops.open = NULL;
-	pcb->fa[0].fops.close = terminal_close;
+	pcb->fa[0].fops.close = NULL;
 	pcb->fa[0].fops.read = terminal_read;
 	pcb->fa[0].fops.write = NULL;
 	pcb->fa[0].file_position = 0;
 
 	// stdout
-	pcb->fa[1].flags = 1;
+	pcb->fa[1].flags = FILE_IN_USE;
 	pcb->fa[1].fops.open = NULL;
-	pcb->fa[1].fops.close = terminal_close;
+	pcb->fa[1].fops.close = NULL;
 	pcb->fa[1].fops.read = NULL;
 	pcb->fa[1].fops.write = terminal_write;
 	pcb->fa[1].file_position = 0;
@@ -38,7 +39,7 @@ void kernel_run_first_program(const int8_t* command) {
 	enable_paging(child_pcb->process_pd);
 
 	// Initialize terminal for programs to use
-	terminal_open("stdin");
+	terminal_open(&child_pcb->fa[0], "stdin");
 
 	uint32_t entrypoint = load_program_into_slot(command, child_pcb->slot_num);
 	if(entrypoint == NULL) return;
@@ -138,7 +139,9 @@ int32_t parse_args(const int8_t *command, int8_t *buf) {
 
 uint32_t load_program_into_slot(const int8_t *filename, uint32_t pcb_slot) {
 	void *process_page = get_process_page_from_slot(pcb_slot);
-	read_file_by_name(filename, process_page + PROCESS_LINK_OFFSET, PROCESS_PAGE_SIZE - PROCESS_LINK_OFFSET);
+	int32_t retval = read_file_by_name(filename, process_page + PROCESS_LINK_OFFSET, PROCESS_PAGE_SIZE - PROCESS_LINK_OFFSET);
+
+	if(retval < 0) return NULL;
 
 	return get_executable_entrypoint(process_page + PROCESS_LINK_OFFSET);
 }

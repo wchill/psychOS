@@ -31,7 +31,7 @@ void ece391_fs_init(void *ptr) {
  *				    0 on success
  *   SIDE EFFECTS: Fills dentry with data
  */ 
-int32_t read_dentry_by_name(const uint8_t *fname, dentry_t *dentry) {
+int32_t read_dentry_by_name(const int8_t *fname, dentry_t *dentry) {
 	uint32_t i;
 
 	// Iterate through every directory entry

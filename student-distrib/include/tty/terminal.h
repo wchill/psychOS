@@ -2,6 +2,7 @@
 #define _TERMINAL_H
 
 #include "types.h"
+#include <lib/file.h>
 
 // http://wiki.osdev.org/%228042%22_PS/2_Controller#PS.2F2_Controller_IO_Ports
 #define KEYBOARD_IRQ 1
@@ -38,10 +39,10 @@ extern void keyboard_handler_wrapper(void);
 void clear_terminal();
 void putc(uint8_t c);
 
-uint32_t terminal_open(const int8_t *filename);
-uint32_t terminal_close(int32_t fd);
-uint32_t terminal_read(int32_t fd, void *buf, int32_t nbytes);
-uint32_t terminal_write(int32_t fd, const void *buf, int32_t nbytes);
+int32_t terminal_open(file_t *f, const int8_t *filename);
+int32_t terminal_close(file_t *f);
+int32_t terminal_read(file_t *f, void *buf, int32_t nbytes);
+int32_t terminal_write(file_t *f, const void *buf, int32_t nbytes);
 
 void get_keyboard_state(uint8_t *buf); // Rodney added for testing
 

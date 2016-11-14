@@ -19,19 +19,27 @@ switch_to_ring_3:
 	mov 	%eax, %fs
 	mov 	%eax, %gs
 
-	# Need to create artificial iret context
-	# push in this order: ss, esp, eflags, cs, eip
+	# Create artificial iret context
+	# Push in this order: ss, esp, eflags, cs, eip
+
+	# User stack = user data segment
 	push 	$USER_DS
+
+	# esp parameter
 	push 	%ecx
 
-	# push flags
-	# todo: evaluate whether this is actually correct?
+	# push eflags, pop it off so we can modify it, then set IF in the new eflags
+	# setting eflags is equivalent to ORing the register with 0x200
 	pushf
-	# Enable interrupts
 	pop 	%eax
-	or 		$0x200, %eax  # the 0x200 is just 1 bit set in binary. We use it to enable interrupts.
+	or 		$EFLAGS_INTERRUPT, %eax
 	push 	%eax
 
+	# User code = user code segment
 	push 	$USER_CS
+
+	# eip parameter
 	push 	%ebx
+
+	# Return from ring 3 to new program
 	iret

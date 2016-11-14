@@ -276,7 +276,7 @@ void keyboard_handler() {
  *
  * @returns         For now, just returns 0.
  */
-uint32_t terminal_open(const int8_t *filename) {
+int32_t terminal_open(file_t *f, const int8_t *filename) {
     // TODO: Assign proper file descriptor
     uint32_t flags;
     cli_and_save(flags);
@@ -298,7 +298,7 @@ uint32_t terminal_open(const int8_t *filename) {
  *
  * @returns   For now, just returns 0.
  */
-uint32_t terminal_close(int32_t fd) {
+int32_t terminal_close(file_t *f) {
     // TODO: handle invalid file descriptor
     uint32_t flags;
     cli_and_save(flags);
@@ -321,7 +321,7 @@ uint32_t terminal_close(int32_t fd) {
  *
  * @returns      The number of bytes actually written.
  */
-uint32_t terminal_read(int32_t fd, void *buf, int32_t nbytes) {
+int32_t terminal_read(file_t *f, void *buf, int32_t nbytes) {
     // TODO: Do something with the fd
 
     uint32_t retval;
@@ -366,7 +366,7 @@ uint32_t terminal_read(int32_t fd, void *buf, int32_t nbytes) {
  *
  * @returns      Always returns nbytes
  */
-uint32_t terminal_write(int32_t fd, const void *buf, int32_t nbytes) {
+int32_t terminal_write(file_t *f, const void *buf, int32_t nbytes) {
     // TODO: something with the fd
     int i;
     uint32_t flags;

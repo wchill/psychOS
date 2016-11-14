@@ -1,7 +1,17 @@
 .data
 .align 4
 syscall_jump_table:
-.long syscall_halt, syscall_execute, syscall_read, syscall_write, syscall_open, syscall_close, syscall_getargs, syscall_vidmap, syscall_set_handler, syscall_sigreturn
+	.long 0
+	.long syscall_halt
+	.long syscall_execute
+	.long syscall_read
+	.long syscall_write
+	.long syscall_open
+	.long syscall_close
+	.long syscall_getargs
+	.long syscall_vidmap
+	.long syscall_set_handler
+	.long syscall_sigreturn
 
 .text
 .globl syscall_handler_wrapper
@@ -9,17 +19,15 @@ syscall_handler_wrapper:
 	# On the stack when this is called:
 	# ss, esp0, eflags, cs, eip
 
-	dec %eax
-
 	# syscall num check
-	cmpl $0, %eax
+	cmpl $1, %eax
 	jl invalid_syscall_num
-	cmpl $9, %eax
+	cmpl $10, %eax
 	jg invalid_syscall_num
 
 	# Save general purpose registers
 	# Order of values goes like this on the stack (high -> low):
-	# ss, esp0, eflags, cs, eip, ebp, edi, esi, edx, ecx, ebx, esp0
+	# ss, esp0, eflags, cs, eip, ebp, edi, esi, edx, ecx, ebx
 	push %ebp
 	push %edi
 	push %esi
