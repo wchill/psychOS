@@ -4,6 +4,8 @@
 SYSCALL_MIN_NUM = 1
 SYSCALL_MAX_NUM = 10
 
+# Jump table for syscall functions
+# First number is just a placeholder
 syscall_jump_table:
 	.long 0
 	.long syscall_halt
@@ -39,6 +41,7 @@ syscall_handler_wrapper:
 	push %ecx
 	push %ebx
 	cld
+	# Jump to correct syscall function using above jump table
 	call *syscall_jump_table(, %eax, 4)
 	pop %ebx
 	pop %ecx
