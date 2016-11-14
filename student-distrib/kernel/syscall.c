@@ -10,13 +10,13 @@
 #define DIRECTORY_FT 1
 #define FILE_FT 2
 
-/*
+/**
  * syscall_open
  * Open a file.
  * 
  * @param filename  The name of the file to open
  *
- * @returns         The file descriptor of the new file, or -1 on failure
+ * @return          The file descriptor of the new file, or -1 on failure
  */
 int32_t syscall_open(const uint8_t *filename) {
     /* TODO: determine whether stuff might be better initialized inside specific open instead of this */
@@ -84,13 +84,13 @@ int32_t syscall_open(const uint8_t *filename) {
     return fd;
 }
 
-/*
+/**
  * syscall_close
  * Close a file.
  * 
  * @param fd        The file descriptor of the file to close.
  *
- * @returns         0 on success, -1 on failure
+ * @return          0 on success, -1 on failure
  */
 int32_t syscall_close(int32_t fd) {
 
@@ -109,13 +109,13 @@ int32_t syscall_close(int32_t fd) {
 
 }
 
-/*
+/**
  * syscall_open
  * Open a file.
  * 
  * @param filename  The name of the file to open
  *
- * @returns         The file descriptor of the new file, or -1 on failure
+ * @return          The file descriptor of the new file, or -1 on failure
  */
 int32_t syscall_read(int32_t fd, void *buf, int32_t nbytes) {
 
@@ -131,13 +131,13 @@ int32_t syscall_read(int32_t fd, void *buf, int32_t nbytes) {
     return PCB->fa[fd].fops.read(&PCB->fa[fd], buf, nbytes);
 }
 
-/*
+/**
  * syscall_open
  * Open a file.
  * 
  * @param filename  The name of the file to open
  *
- * @returns         The file descriptor of the new file, or -1 on failure
+ * @return          The file descriptor of the new file, or -1 on failure
  */
 int32_t syscall_write(int32_t fd, const void *buf, int32_t nbytes) {
 
@@ -154,13 +154,13 @@ int32_t syscall_write(int32_t fd, const void *buf, int32_t nbytes) {
 
 }
 
-/*
+/**
  * syscall_execute
  * Executes a new program.
  * 
  * @param command   The name of the new executable to launch.
  *
- * @returns         0-255 if the program executed successfully
+ * @return          0-255 if the program executed successfully
  *                  256 if the program was killed due to an exception
  *                  -1 on failure
  */
@@ -220,13 +220,13 @@ int32_t syscall_execute(const int8_t *command) {
     return -1;
 }
 
-/*
+/**
  * syscall_halt
  * Exits the current program and returns to the parent program.
  * 
  * @param status    The program's exit code
  *
- * @returns         Does not return (jumps back to parent program)
+ * @return          Does not return (jumps back to parent program)
  */
 int32_t syscall_halt(uint32_t status) {
     pcb_t *child_pcb = get_current_pcb();

@@ -89,7 +89,7 @@ void install_interrupt_handler(uint8_t interrupt_num, void *handler, uint8_t seg
  * @returns         a pointer to a const string containing a human-readable description of the error
  */
 const char *interpret_exception(uint32_t int_num) {
-    if(int_num >= 32) return "Unknown";
+    if(int_num >= NUM_RESERVED_VEC) return "Unknown";
 
     return human_readable_errors[int_num];
 }

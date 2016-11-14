@@ -7,12 +7,16 @@
 
 #define PCB_BITMASK (~0x1FFF)
 #define ELF_MAGIC_HEADER "\x7f\x45\x4c\x46"
+#define ELF_MAGIC_HEADER_LEN 4
+#define ELF_ENTRYPOINT_OFFSET 24
 
 #define KERNEL_PAGE_END 0x800000
 #define PROCESS_PAGE_SIZE 0x400000
 #define KERNEL_STACK_SIZE 0x2000
+
 #define MAX_PROCESSES 2
 #define MAX_FILE_DESCRIPTORS 8
+#define MAX_ARGS_LENGTH 128
 
 #define PROCESS_LINK_OFFSET 0x48000
 #define PROCESS_LINK_START 0x8048000
@@ -22,22 +26,13 @@ typedef struct pcb_t pcb_t;
 struct pcb_t {
 	pd_entry process_pd[NUM_PD_ENTRIES] __attribute__((aligned (FOUR_KB_ALIGNED)));
 	struct {
-		uint32_t eax;
-		uint32_t ebx;
-		uint32_t ecx;
-		uint32_t edx;
-		uint32_t esi;
-		uint32_t edi;
 		uint32_t esp;
 		uint32_t ebp;
-		uint32_t eip;
-		uint32_t eflags;
 	} regs;
 	file_t fa[MAX_FILE_DESCRIPTORS];
-	int8_t args[128];
+	int8_t args[MAX_ARGS_LENGTH];
 	uint32_t slot_num;
 	uint32_t pid;
-	uint32_t esp0;
 	pcb_t *parent;
 	pcb_t *child;
 	uint8_t in_use;

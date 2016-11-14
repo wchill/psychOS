@@ -1,12 +1,12 @@
 #include <arch/x86/io.h>
 
-/*
+/**
  * inportb
  * Gets a byte from provided port and returns it.
  * 
  * @param port   The port to read from
  * 
- * @returns      A byte from the provided port
+ * @return       A byte from the provided port
  */
 inline uint8_t inportb(uint16_t port) {
     uint32_t val;
@@ -18,13 +18,13 @@ inline uint8_t inportb(uint16_t port) {
     return (uint8_t) val;
 }
 
-/*
+/**
  * inportw
  * Gets a word from provided port and returns it.
  * 
  * @param port   The port to read from
  * 
- * @returns      A word from the provided port
+ * @return       A word from the provided port
  */
 inline uint16_t inportw(uint16_t port) {
     uint32_t val;
@@ -36,13 +36,13 @@ inline uint16_t inportw(uint16_t port) {
     return (uint16_t) val;
 }
 
-/*
+/**
  * inportl
  * Gets a long from provided port and returns it.
  * 
  * @param port   The port to read from
  * 
- * @returns      A long from the provided port
+ * @return       A long from the provided port
  */
 inline uint32_t inportl(uint16_t port) {
     uint32_t val;
@@ -53,7 +53,7 @@ inline uint32_t inportl(uint16_t port) {
     return val;
 }
 
-/*
+/**
  * outportb
  * writes data (a byte) to provided port
  * 
@@ -67,7 +67,7 @@ inline void outportb(uint16_t port, uint8_t data) {
             : "memory", "cc" );
 }
 
-/*
+/**
  * outportw
  * writes data (a word) to provided port
  * 
@@ -81,7 +81,7 @@ inline void outportw(uint16_t port, uint16_t data) {
             : "memory", "cc" );
 }
 
-/*
+/**
  * outportl
  * writes data (a long) to provided port
  * 

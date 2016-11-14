@@ -184,7 +184,7 @@ void start_rtc_test() {
         htz = MIN_FREQ;
 
     uint32_t temp_htz = htz;
-    rtc_write(0, &temp_htz, 4);         // tests "rtc_write".
+    rtc_write(0, &temp_htz, sizeof(temp_htz));         // tests "rtc_write".
 
     set_rtc_test_enabled(1);
 }

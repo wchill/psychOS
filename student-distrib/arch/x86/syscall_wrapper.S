@@ -1,5 +1,9 @@
 .data
 .align 4
+
+SYSCALL_MIN_NUM = 1
+SYSCALL_MAX_NUM = 10
+
 syscall_jump_table:
 	.long 0
 	.long syscall_halt
@@ -19,10 +23,10 @@ syscall_handler_wrapper:
 	# On the stack when this is called:
 	# ss, esp0, eflags, cs, eip
 
-	# syscall num check
-	cmpl $1, %eax
+	# Check if syscall number is valid (1-10)
+	cmpl $SYSCALL_MIN_NUM, %eax
 	jl invalid_syscall_num
-	cmpl $10, %eax
+	cmpl $SYSCALL_MAX_NUM, %eax
 	jg invalid_syscall_num
 
 	# Save general purpose registers

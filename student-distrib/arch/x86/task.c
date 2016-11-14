@@ -11,7 +11,7 @@
  * 
  * @param process_esp   Pointer to the process's current stack
  *
- * @returns             A pointer to the process's PCB
+ * @return              A pointer to the process's PCB
  */
 inline pcb_t *get_pcb_from_esp(void *process_esp) {
     // The PCB is at the end of the process's kernel stack
@@ -27,7 +27,7 @@ inline pcb_t *get_pcb_from_esp(void *process_esp) {
  * 
  * @param pcb_slot  The process's current process slot
  *
- * @returns         A pointer to the process's PCB
+ * @return          A pointer to the process's PCB
  */
 inline pcb_t *get_pcb_from_slot(uint32_t pcb_slot) {
     // Take the end of the kernel page, subtract (8kB * (process # + 1)) to get
@@ -39,7 +39,7 @@ inline pcb_t *get_pcb_from_slot(uint32_t pcb_slot) {
  * get_current_pcb
  * Get the current process's Process Control Block.
  *
- * @returns     A pointer to the process's PCB
+ * @return      A pointer to the process's PCB
  */
 inline pcb_t *get_current_pcb() {
     // To get the current kernel stack pointer so we can get the PCB,
@@ -52,7 +52,7 @@ inline pcb_t *get_current_pcb() {
  * get_current_kernel_stack_base
  * Get a pointer to the beginning of the current process's kernel stack.
  *
- * @returns     A pointer to the start of the current process's kernel stack
+ * @return      A pointer to the start of the current process's kernel stack
  */
 inline void *get_current_kernel_stack_base() {
     // Determine current stack pointer, determine the end of the stack, then add
@@ -67,7 +67,7 @@ inline void *get_current_kernel_stack_base() {
  *
  * @param pcb_slot  The process's current process slot
  *
- * @returns         A pointer to the start of the process's kernel stack
+ * @return          A pointer to the start of the process's kernel stack
  */
 inline void *get_kernel_stack_base_from_slot(uint32_t pcb_slot) {
     // Starting from the end of the kernel page, subtract (8kB * process #)
@@ -81,7 +81,7 @@ inline void *get_kernel_stack_base_from_slot(uint32_t pcb_slot) {
  * 
  * @param task_slot     The process's current process slot
  *
- * @returns             A pointer to the start of the process's memory page
+ * @return              A pointer to the start of the process's memory page
  */
 inline void *get_process_page_from_slot(uint32_t task_slot) {
     // Starting from the end of the kernel page, add (4MB * process #)
@@ -168,7 +168,7 @@ void set_kernel_stack(const void *stack) {
     tss.ss0 = KERNEL_DS;
     tss.esp0 = (uint32_t) stack;
 
-    // Reset the TSS entry in GDB (might not be necessary, but I had problems otherwise)
+    // Reset the TSS entry in GDT (might not be necessary, but I had problems otherwise)
     seg_desc_t the_tss_desc;
     the_tss_desc.granularity    = 0;
     the_tss_desc.opsize         = 0;
@@ -195,18 +195,18 @@ void set_kernel_stack(const void *stack) {
  * 
  * @param executable    Pointer to an executable in memory
  *
- * @returns             NULL if not a valid binary, else a 32-bit integer representing the start address
+ * @return              NULL if not a valid binary, else a 32-bit integer representing the start address
  */
 uint32_t get_executable_entrypoint(const void *executable) {
     const int8_t *ptr = (const int8_t*) executable;
 
     // Check for ELF header
-    if(strncmp(ptr, ELF_MAGIC_HEADER, 4)) {
+    if(strncmp(ptr, ELF_MAGIC_HEADER, ELF_MAGIC_HEADER_LEN)) {
         return NULL;
     }
 
     // Read entry point address
-    uint32_t addr = *((uint32_t*) &ptr[24]);
+    uint32_t addr = *((uint32_t*) &ptr[ELF_ENTRYPOINT_OFFSET]);
 
     return addr;
 }
@@ -218,7 +218,7 @@ uint32_t get_executable_entrypoint(const void *executable) {
  * @param command   Pointer to a string containing a program and its arguments
  * @param buf       Pointer to a buffer to copy arguments to
  *
- * @returns         0 if no arguments provided, else the number of bytes copied
+ * @return          0 if no arguments provided, else the number of bytes copied
  */
 int32_t parse_args(const int8_t *command, int8_t *buf) {
     // Parse args
@@ -255,7 +255,7 @@ int32_t parse_args(const int8_t *command, int8_t *buf) {
  * @param filename  Pointer to a string containing a filename to load
  * @param pcb_slot  An integer representing which process slot to use
  *
- * @returns         NULL if not a valid program or nonexistent; start address otherwise
+ * @return          NULL if not a valid program or nonexistent; start address otherwise
  */
 uint32_t load_program_into_slot(const int8_t *filename, uint32_t pcb_slot) {
     // Get memory page and copy file into the correct location in that page
