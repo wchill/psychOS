@@ -84,7 +84,9 @@ void install_interrupt_handler(uint8_t interrupt_num, void *handler, uint8_t seg
  * interpret_exception
  * Returns human-readable errors for interrupt numbers 0-31, and "Unknown" for numbers 32-255.
  * 
- * @param int_num  The interrupt number (From 0-255).
+ * @param int_num   The interrupt number (From 0-255).
+ *
+ * @returns         a pointer to a const string containing a human-readable description of the error
  */
 const char *interpret_exception(uint32_t int_num) {
     if(int_num >= 32) return "Unknown";
