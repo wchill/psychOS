@@ -5,48 +5,47 @@
 #include <tty/terminal.h>
 #include <arch/x86/x86_desc.h>
 
-
 static const char *human_readable_errors[] = {
-	"Divide-by-zero",
-	"Debug",
-	"Non-maskable interrupt",
-	"Breakpoint",
-	"Overflow",
-	"Bound range exceeded",
-	"Invalid opcode",
-	"Device not available",
-	"Double fault",
-	"Coprocessor segment overrun",
-	"Invalid TSS",
-	"Segment not present",
-	"Stack-segment fault",
-	"General protection fault",
-	"Page fault",
-	"Reserved",
-	"x87 Floating point exception",
-	"Alignment check",
-	"Machine check",
-	"SIMD Floating point exception",
-	"Virtualization exception",
-	"Reserved",
-	"Reserved",
-	"Reserved",
-	"Reserved",
-	"Reserved",
-	"Reserved",
-	"Reserved",
-	"Reserved",
-	"Reserved",
-	"Reserved",
-	"Security Exception",
-	"Triple fault"
+    "Divide-by-zero",
+    "Debug",
+    "Non-maskable interrupt",
+    "Breakpoint",
+    "Overflow",
+    "Bound range exceeded",
+    "Invalid opcode",
+    "Device not available",
+    "Double fault",
+    "Coprocessor segment overrun",
+    "Invalid TSS",
+    "Segment not present",
+    "Stack-segment fault",
+    "General protection fault",
+    "Page fault",
+    "Reserved",
+    "x87 Floating point exception",
+    "Alignment check",
+    "Machine check",
+    "SIMD Floating point exception",
+    "Virtualization exception",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Security Exception",
+    "Triple fault"
 };
 
 static const int has_error_code[] = {
-	0, 0, 0, 0, 0, 0, 0, 0,
-	1, 0, 1, 1, 1, 1, 1, 0,
-	0, 1, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 1, 0
+    0, 0, 0, 0, 0, 0, 0, 0,
+    1, 0, 1, 1, 1, 1, 1, 0,
+    0, 1, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 1, 0
 };
 
 /**
@@ -59,31 +58,31 @@ static const int has_error_code[] = {
  * @param dpl            Descriptor Privilige Level, the privilege level the handler can be called from (0, 1, 2, 3).
  */
 void install_interrupt_handler(uint8_t interrupt_num, void *handler, uint8_t seg_selector, uint8_t dpl) {
-	idt_desc_t exception_handle_desc;
-	SET_IDT_ENTRY(exception_handle_desc, handler); // Takes 32-bit handler address and puts it in appropriate spots: top 16 and bottom 16 bits of 64-bit IDT entry
-	exception_handle_desc.present = 1;
-	exception_handle_desc.dpl = dpl;
-	exception_handle_desc.reserved0 = 0;
+    idt_desc_t exception_handle_desc;
+    SET_IDT_ENTRY(exception_handle_desc, handler); // Takes 32-bit handler address and puts it in appropriate spots: top 16 and bottom 16 bits of 64-bit IDT entry
+    exception_handle_desc.present = 1;
+    exception_handle_desc.dpl = dpl;
+    exception_handle_desc.reserved0 = 0;
 
-	// 32-bit 80386 interrupt gate
-	exception_handle_desc.size = 1;
-	exception_handle_desc.reserved1 = 1;
-	exception_handle_desc.reserved2 = 1;
-	exception_handle_desc.reserved3 = 0;
+    // 32-bit 80386 interrupt gate
+    exception_handle_desc.size = 1;
+    exception_handle_desc.reserved1 = 1;
+    exception_handle_desc.reserved2 = 1;
+    exception_handle_desc.reserved3 = 0;
 
-	exception_handle_desc.reserved4 = 0; // We assume reserved bits are just for padding when we clear them here.
+    exception_handle_desc.reserved4 = 0; // We assume reserved bits are just for padding when we clear them here.
 
-	// Kernel code segment
-	exception_handle_desc.seg_selector = seg_selector;
+    // Kernel code segment
+    exception_handle_desc.seg_selector = seg_selector;
 
-	idt[interrupt_num] = exception_handle_desc;
+    idt[interrupt_num] = exception_handle_desc;
 }
 
 // Returns a human readable interpretation of an error code.
 const char *interpret_exception(uint32_t int_num) {
-	if(int_num >= 32) return "Unknown";
+    if(int_num >= 32) return "Unknown";
 
-	return human_readable_errors[int_num];
+    return human_readable_errors[int_num];
 }
 
 /**
@@ -105,46 +104,46 @@ const char *interpret_exception(uint32_t int_num) {
  * @param eflags   Flags values (printed to screen)
  */
 void exception_handler(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
-	uint32_t esi, uint32_t edi, uint32_t ebp, uint32_t esp,
-	uint32_t int_num, uint32_t error,
-	uint32_t eip, uint32_t cs, uint32_t eflags) {
+    uint32_t esi, uint32_t edi, uint32_t ebp, uint32_t esp,
+    uint32_t int_num, uint32_t error,
+    uint32_t eip, uint32_t cs, uint32_t eflags) {
 
-	clear_terminal();
-	printf("---------------------------AN EXCEPTION HAS OCCURRED---------------------------\n\n");
-	printf(" An exception has occurred: %s (0x%x)\n", interpret_exception(int_num), int_num);
+    clear_terminal();
+    printf("---------------------------AN EXCEPTION HAS OCCURRED---------------------------\n\n");
+    printf(" An exception has occurred: %s (0x%x)\n", interpret_exception(int_num), int_num);
 
-	if(has_error_code[int_num]) {
-		printf(" The associated error code is: 0x%#x\n", error);
-	}
-	printf("\n");
+    if(has_error_code[int_num]) {
+        printf(" The associated error code is: 0x%#x\n", error);
+    }
+    printf("\n");
 
-	switch(int_num) {
-		case 0xE:
-			{
-				// Load cr2 register to determine the page fault address
-				uint32_t virtual_addr;
-				asm volatile(
-					"movl   %%cr2, %0"
-					: "=a"(virtual_addr)
-					: 
-					: "memory"
-				);
-				printf("An attempt was made to access the following virtual address: 0x%#x\n\n", virtual_addr);
-			}
-			break;
-		default:
-			break;
-	}
-	printf(" REGISTERS:\n");
-	printf(" eax: 0x%#x    ebx:    0x%#x\n", eax, ebx);
-	printf(" ecx: 0x%#x    edx:    0x%#x\n", ecx, edx);
-	printf(" esi: 0x%#x    edi:    0x%#x\n", esi, edi);
-	printf(" esp: 0x%#x    ebp:    0x%#x\n", esp, ebp);
-	printf("\n");
-	printf(" eip: 0x%#x    eflags: 0x%#x\n", eip, eflags);
+    switch(int_num) {
+        case 0xE:
+            {
+                // Load cr2 register to determine the page fault address
+                uint32_t virtual_addr;
+                asm volatile(
+                    "movl   %%cr2, %0"
+                    : "=a"(virtual_addr)
+                    : 
+                    : "memory"
+                );
+                printf("An attempt was made to access the following virtual address: 0x%#x\n\n", virtual_addr);
+            }
+            break;
+        default:
+            break;
+    }
+    printf(" REGISTERS:\n");
+    printf(" eax: 0x%#x    ebx:    0x%#x\n", eax, ebx);
+    printf(" ecx: 0x%#x    edx:    0x%#x\n", ecx, edx);
+    printf(" esi: 0x%#x    edi:    0x%#x\n", esi, edi);
+    printf(" esp: 0x%#x    ebp:    0x%#x\n", esp, ebp);
+    printf("\n");
+    printf(" eip: 0x%#x    eflags: 0x%#x\n", eip, eflags);
 
-	// loop forever
-	for(;;) {
-    	asm("hlt");
- 	}
+    // loop forever
+    for(;;) {
+        asm volatile("hlt");
+    }
 }

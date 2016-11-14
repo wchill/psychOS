@@ -10,12 +10,12 @@
  * @param max_len   Maximum length of circular buffer
  */
 void circular_buffer_init(circular_buffer_t *buf, void *data_buf, uint32_t max_len) {
-	buf->max_len     = max_len;
-	buf->current_len = 0;
-	buf->data_start  = data_buf;
-	buf->data_end    = data_buf + max_len;
-	buf->head        = data_buf;
-	buf->tail        = data_buf;
+    buf->max_len     = max_len;
+    buf->current_len = 0;
+    buf->data_start  = data_buf;
+    buf->data_end    = data_buf + max_len;
+    buf->head        = data_buf;
+    buf->tail        = data_buf;
 }
 
 /*
@@ -25,9 +25,9 @@ void circular_buffer_init(circular_buffer_t *buf, void *data_buf, uint32_t max_l
  * @param buf       The circular buffer to clear
  */
 void circular_buffer_clear(circular_buffer_t *buf) {
-	buf->current_len = 0;           // no need to actually delete the data, just set length to 0
-	buf->head        = buf->data_start;
-	buf->tail        = buf->data_start;
+    buf->current_len = 0;           // no need to actually delete the data, just set length to 0
+    buf->head        = buf->data_start;
+    buf->tail        = buf->data_start;
 }
 
 /*
@@ -41,24 +41,24 @@ void circular_buffer_clear(circular_buffer_t *buf) {
  * @returns         number of bytes copied (may be less than len)
  */
 uint32_t circular_buffer_put(circular_buffer_t *buf, void *input_buf, uint32_t len) {
-	int i;
-	uint8_t *in = (uint8_t*) input_buf;
+    int i;
+    uint8_t *in = (uint8_t*) input_buf;
 
-	// Cap the # of bytes to add
-	if(buf->current_len + len > buf->max_len) {
-		len = buf->max_len - buf->current_len;
-	}
+    // Cap the # of bytes to add
+    if(buf->current_len + len > buf->max_len) {
+        len = buf->max_len - buf->current_len;
+    }
 
-	// Add byte and then increment tail pointer len times, wrapping around when necessary
-	for(i = 0; i < len; i++) {
-		*(buf->tail++) = *(in++);
-		if(buf->tail >= buf->data_end) {
-			buf->tail = buf->data_start;
-		}
-	}
+    // Add byte and then increment tail pointer len times, wrapping around when necessary
+    for(i = 0; i < len; i++) {
+        *(buf->tail++) = *(in++);
+        if(buf->tail >= buf->data_end) {
+            buf->tail = buf->data_start;
+        }
+    }
 
-	buf->current_len += len;
-	return len;
+    buf->current_len += len;
+    return len;
 }
 
 /*
@@ -72,24 +72,24 @@ uint32_t circular_buffer_put(circular_buffer_t *buf, void *input_buf, uint32_t l
  * @returns         number of bytes copied (may be less than len)
  */
 uint32_t circular_buffer_get(circular_buffer_t *buf, void *output_buf, uint32_t len) {
-	int i;
-	uint8_t *out = (uint8_t*) output_buf;
+    int i;
+    uint8_t *out = (uint8_t*) output_buf;
 
-	// Cap the # of bytes to remove
-	if (len > buf->current_len) {
-		len = buf->current_len;
-	}
+    // Cap the # of bytes to remove
+    if (len > buf->current_len) {
+        len = buf->current_len;
+    }
 
-	// Remove byte and then increment head pointer len times, wrapping around when necessary
-	for(i = 0; i < len; i++) {
-		*(out++) = *(buf->head++);
-		if(buf->head >= buf->data_end) {
-			buf->head = buf->data_start;
-		}
-	}
+    // Remove byte and then increment head pointer len times, wrapping around when necessary
+    for(i = 0; i < len; i++) {
+        *(out++) = *(buf->head++);
+        if(buf->head >= buf->data_end) {
+            buf->head = buf->data_start;
+        }
+    }
 
-	buf->current_len -= len;
-	return len;
+    buf->current_len -= len;
+    return len;
 }
 
 /*
@@ -103,24 +103,24 @@ uint32_t circular_buffer_get(circular_buffer_t *buf, void *output_buf, uint32_t 
  * @returns         number of bytes copied (may be less than len)
  */
 uint32_t circular_buffer_peek(circular_buffer_t *buf, void *output_buf, uint32_t len) {
-	int i;
-	uint8_t *out = (uint8_t*) output_buf;
-	uint8_t *addr = buf->head;
+    int i;
+    uint8_t *out = (uint8_t*) output_buf;
+    uint8_t *addr = buf->head;
 
-	// Cap the # of bytes to copy
-	if (len > buf->current_len) {
-		len = buf->current_len;
-	}
+    // Cap the # of bytes to copy
+    if (len > buf->current_len) {
+        len = buf->current_len;
+    }
 
-	// Copy byte and then increment temporary head pointer len times, wrapping around when necessary
-	for(i = 0; i < len; i++) {
-		*(out++) = *(addr++);
-		if(addr >= buf->data_end) {
-			addr = buf->data_start;
-		}
-	}
+    // Copy byte and then increment temporary head pointer len times, wrapping around when necessary
+    for(i = 0; i < len; i++) {
+        *(out++) = *(addr++);
+        if(addr >= buf->data_end) {
+            addr = buf->data_start;
+        }
+    }
 
-	return len;
+    return len;
 }
 
 /*
@@ -133,17 +133,17 @@ uint32_t circular_buffer_peek(circular_buffer_t *buf, void *output_buf, uint32_t
  * @returns         Number of bytes we successfully "put" (either 0 or 1)
  */
 uint32_t circular_buffer_put_byte(circular_buffer_t *buf, uint8_t b) {
-	if(buf->current_len >= buf->max_len) return 0;
+    if(buf->current_len >= buf->max_len) return 0;
 
-	// Copy byte, increment pointer, wraparound
-	*(buf->tail) = b;
-	buf->tail++;
-	if(buf->tail >= buf->data_end) {
-		buf->tail = buf->data_start;
-	}
+    // Copy byte, increment pointer, wraparound
+    *(buf->tail) = b;
+    buf->tail++;
+    if(buf->tail >= buf->data_end) {
+        buf->tail = buf->data_start;
+    }
 
-	buf->current_len++;
-	return 1;
+    buf->current_len++;
+    return 1;
 }
 
 /*
@@ -156,17 +156,17 @@ uint32_t circular_buffer_put_byte(circular_buffer_t *buf, uint8_t b) {
  * @returns         Number of bytes we successfully got (either 0 or 1)
  */
 uint32_t circular_buffer_get_byte(circular_buffer_t *buf, uint8_t *b) {
-	if(buf->current_len == 0) return 0;
-	
-	// Copy byte, increment pointer, wraparound
-	*b = *(buf->head);
-	buf->head++;
-	if(buf->head >= buf->data_end) {
-		buf->head = buf->data_start;
-	}
+    if(buf->current_len == 0) return 0;
+    
+    // Copy byte, increment pointer, wraparound
+    *b = *(buf->head);
+    buf->head++;
+    if(buf->head >= buf->data_end) {
+        buf->head = buf->data_start;
+    }
 
-	buf->current_len--;
-	return 1;
+    buf->current_len--;
+    return 1;
 }
 
 /*
@@ -179,16 +179,16 @@ uint32_t circular_buffer_get_byte(circular_buffer_t *buf, uint8_t *b) {
  * @returns         Number of bytes we successfully got (either 0 or 1)
  */
 uint32_t circular_buffer_peek_end_byte(circular_buffer_t *buf, uint8_t *b) {
-	if(buf->current_len == 0) return 0;
+    if(buf->current_len == 0) return 0;
 
-	uint8_t *addr = buf->tail - 1;
+    uint8_t *addr = buf->tail - 1;
 
-	if(addr < buf->data_start) {
-		addr = buf->data_end - 1;
-	}
+    if(addr < buf->data_start) {
+        addr = buf->data_end - 1;
+    }
 
-	*b = *addr;
-	return 1;
+    *b = *addr;
+    return 1;
 }
 
 /*
@@ -200,16 +200,16 @@ uint32_t circular_buffer_peek_end_byte(circular_buffer_t *buf, uint8_t *b) {
  * @returns         Number of bytes we successfully removed (either 0 or 1)
  */
 uint32_t circular_buffer_remove_end_byte(circular_buffer_t *buf) {
-	if(buf->current_len == 0) return 0;
+    if(buf->current_len == 0) return 0;
 
-	// Remove byte, increment pointer, wraparound
-	buf->tail--;
-	if(buf->tail < buf->data_start) {
-		buf->tail = buf->data_end - 1;
-	}
+    // Remove byte, increment pointer, wraparound
+    buf->tail--;
+    if(buf->tail < buf->data_start) {
+        buf->tail = buf->data_end - 1;
+    }
 
-	buf->current_len--;
-	return 1;
+    buf->current_len--;
+    return 1;
 }
 
 /*
@@ -222,20 +222,20 @@ uint32_t circular_buffer_remove_end_byte(circular_buffer_t *buf) {
  * @returns         The number of characters before the given value is encountered, or -1 if not found.
  */
 int32_t circular_buffer_find(circular_buffer_t *buf, uint8_t val) {
-	int32_t len = 0;
-	uint8_t *addr = buf->head;
+    int32_t len = 0;
+    uint8_t *addr = buf->head;
 
-	// Basically a strlen but with pointer wraparound
-	for(; len < buf->current_len; len++) {
-		if(*addr == val) {
-			return len;
-		}
-		addr++;
-		if(addr >= buf->data_end) {
-			addr = buf->data_start;
-		}
-	}
-	return -1;
+    // Basically a strlen but with pointer wraparound
+    for(; len < buf->current_len; len++) {
+        if(*addr == val) {
+            return len;
+        }
+        addr++;
+        if(addr >= buf->data_end) {
+            addr = buf->data_start;
+        }
+    }
+    return -1;
 }
 
 /*
@@ -247,5 +247,5 @@ int32_t circular_buffer_find(circular_buffer_t *buf, uint8_t val) {
  * @returns         Size (in bytes) of circular buffer.
  */
 inline uint32_t circular_buffer_len(circular_buffer_t *buf) {
-	return buf->current_len;
+    return buf->current_len;
 }

@@ -6,59 +6,59 @@
 #include <tty/terminal.h>
 
 void open_stdin_and_stdout(pcb_t *pcb) {
-	// stdin
-	pcb->fa[0].flags = FILE_IN_USE;
-	pcb->fa[0].fops.open = NULL;
-	pcb->fa[0].fops.close = NULL;
-	pcb->fa[0].fops.read = terminal_read;
-	pcb->fa[0].fops.write = NULL;
-	pcb->fa[0].file_position = 0;
+    // stdin
+    pcb->fa[0].flags = FILE_IN_USE;
+    pcb->fa[0].fops.open = NULL;
+    pcb->fa[0].fops.close = NULL;
+    pcb->fa[0].fops.read = terminal_read;
+    pcb->fa[0].fops.write = NULL;
+    pcb->fa[0].file_position = 0;
 
-	// stdout
-	pcb->fa[1].flags = FILE_IN_USE;
-	pcb->fa[1].fops.open = NULL;
-	pcb->fa[1].fops.close = NULL;
-	pcb->fa[1].fops.read = NULL;
-	pcb->fa[1].fops.write = terminal_write;
-	pcb->fa[1].file_position = 0;
+    // stdout
+    pcb->fa[1].flags = FILE_IN_USE;
+    pcb->fa[1].fops.open = NULL;
+    pcb->fa[1].fops.close = NULL;
+    pcb->fa[1].fops.read = NULL;
+    pcb->fa[1].fops.write = terminal_write;
+    pcb->fa[1].file_position = 0;
 }
 
 void kernel_run_first_program(const int8_t* command) {
-	// Clear kernel PCBs
-	int i;
-	for(i = 0; i < MAX_PROCESSES; i++) {
-		pcb_t *current_pcb = get_pcb_from_slot(i);
-		current_pcb->in_use = 0;
-		current_pcb->slot_num = i;
-	}
+    // Clear kernel PCBs
+    int i;
+    for(i = 0; i < MAX_PROCESSES; i++) {
+        pcb_t *current_pcb = get_pcb_from_slot(i);
+        current_pcb->in_use = 0;
+        current_pcb->slot_num = i;
+    }
 
-	pcb_t *child_pcb = get_pcb_from_slot(0);
+    pcb_t *child_pcb = get_pcb_from_slot(0);
 
-	// Process paging
-	setup_process_paging(child_pcb->process_pd, get_process_page_from_slot(child_pcb->slot_num));
-	enable_paging(child_pcb->process_pd);
+    // Process paging
+    setup_process_paging(child_pcb->process_pd, get_process_page_from_slot(child_pcb->slot_num));
+    enable_paging(child_pcb->process_pd);
 
-	// Initialize terminal for programs to use
-	terminal_open(&child_pcb->fa[0], "stdin");
+    // Initialize terminal for programs to use
+    terminal_open(&child_pcb->fa[0], "stdin");
 
-	uint32_t entrypoint = load_program_into_slot(command, child_pcb->slot_num);
-	if(entrypoint == NULL) return;
+    uint32_t entrypoint = load_program_into_slot(command, child_pcb->slot_num);
+    if(entrypoint == NULL) return;
 
-	// Set up PCB
-	child_pcb->parent = NULL;
-	child_pcb->child = NULL;
-	child_pcb->in_use = 1;
-	child_pcb->pid = 0;
-	open_stdin_and_stdout(child_pcb);
+    // Set up PCB
+    child_pcb->parent = NULL;
+    child_pcb->child = NULL;
+    child_pcb->in_use = 1;
+    child_pcb->pid = 0;
+    open_stdin_and_stdout(child_pcb);
 
-	parse_args(command, child_pcb->args);
+    parse_args(command, child_pcb->args);
 
-	// Prepare for context switch
-	set_kernel_stack(get_kernel_stack_base_from_slot(child_pcb->slot_num));
+    // Prepare for context switch
+    set_kernel_stack(get_kernel_stack_base_from_slot(child_pcb->slot_num));
 
-	open_stdin_and_stdout(child_pcb);
+    open_stdin_and_stdout(child_pcb);
 
-	switch_to_ring_3(PROCESS_LINK_START, entrypoint);
+    switch_to_ring_3(PROCESS_LINK_START, entrypoint);
 }
 
 void set_kernel_stack(const void *stack) {
@@ -86,17 +86,17 @@ void set_kernel_stack(const void *stack) {
 }
 
 uint32_t get_executable_entrypoint(const void *executable) {
-	const int8_t *ptr = (const int8_t*) executable;
+    const int8_t *ptr = (const int8_t*) executable;
 
-	// Check for ELF header
-	if(strncmp(ptr, ELF_MAGIC_HEADER, 4)) {
-		return NULL;
-	}
+    // Check for ELF header
+    if(strncmp(ptr, ELF_MAGIC_HEADER, 4)) {
+        return NULL;
+    }
 
-	// Read entry point address
-	uint32_t addr = *((uint32_t*) &ptr[24]);
+    // Read entry point address
+    uint32_t addr = *((uint32_t*) &ptr[24]);
 
-	return addr;
+    return addr;
 }
 
 /**
@@ -110,67 +110,67 @@ uint32_t get_executable_entrypoint(const void *executable) {
  *
  */
 int32_t parse_args(const int8_t *command, int8_t *buf) {
-	// Parse args
-	int index = 0;
-	int start = 0;
-	int len = 0;
-	int8_t ch;
-	while((ch = command[index++]) != '\0') {
-		// Find the first character after space
-		if (ch == ' ') {
-			while(ch == ' ') {
-				ch = command[index++];
-			}
-			start = index;
-			break;
-		}
-	}
+    // Parse args
+    int index = 0;
+    int start = 0;
+    int len = 0;
+    int8_t ch;
+    while((ch = command[index++]) != '\0') {
+        // Find the first character after space
+        if (ch == ' ') {
+            while(ch == ' ') {
+                ch = command[index++];
+            }
+            start = index;
+            break;
+        }
+    }
 
-	// If there were any args, then get their length and copy
-	if(start > 0) {
-		len = strlen(&command[start]);
-		memcpy(buf, &command[start], len);
-	}
+    // If there were any args, then get their length and copy
+    if(start > 0) {
+        len = strlen(&command[start]);
+        memcpy(buf, &command[start], len);
+    }
 
-	// Null terminate the string
-	buf[len] = '\0';
-	return len;
+    // Null terminate the string
+    buf[len] = '\0';
+    return len;
 }
 
 uint32_t load_program_into_slot(const int8_t *filename, uint32_t pcb_slot) {
-	void *process_page = get_process_page_from_slot(pcb_slot);
-	int32_t retval = read_file_by_name(filename, process_page + PROCESS_LINK_OFFSET, PROCESS_PAGE_SIZE - PROCESS_LINK_OFFSET);
+    void *process_page = get_process_page_from_slot(pcb_slot);
+    int32_t retval = read_file_by_name(filename, process_page + PROCESS_LINK_OFFSET, PROCESS_PAGE_SIZE - PROCESS_LINK_OFFSET);
 
-	if(retval < 0) return NULL;
+    if(retval < 0) return NULL;
 
-	return get_executable_entrypoint(process_page + PROCESS_LINK_OFFSET);
+    return get_executable_entrypoint(process_page + PROCESS_LINK_OFFSET);
 }
 
 inline pcb_t *get_pcb_from_esp(void *process_esp) {
-	return (pcb_t *) ((uint32_t) (process_esp - 1) & PCB_BITMASK);
+    return (pcb_t *) ((uint32_t) (process_esp - 1) & PCB_BITMASK);
 }
 
 inline pcb_t *get_pcb_from_slot(uint32_t pcb_slot) {
-	return (pcb_t*) (KERNEL_PAGE_END - (KERNEL_STACK_SIZE * (pcb_slot + 1)));
+    return (pcb_t*) (KERNEL_PAGE_END - (KERNEL_STACK_SIZE * (pcb_slot + 1)));
 }
 
 inline pcb_t *get_current_pcb() {
-	int stack_var = 0;
-	return get_pcb_from_esp(&stack_var);
+    int stack_var = 0;
+    return get_pcb_from_esp(&stack_var);
 }
 
 inline void *get_current_kernel_stack_base() {
-	// Trick: Allocate variable on stack, then take its address
-	// and use bitmask to get the top of the current stack
-	// Then we can add 8kB to the value to get the bottom of the stack
-	int stack_var = 0;
-	return (void*) (((uint32_t) &stack_var & PCB_BITMASK) + KERNEL_STACK_SIZE);
+    // Trick: Allocate variable on stack, then take its address
+    // and use bitmask to get the top of the current stack
+    // Then we can add 8kB to the value to get the bottom of the stack
+    int stack_var = 0;
+    return (void*) (((uint32_t) &stack_var & PCB_BITMASK) + KERNEL_STACK_SIZE);
 }
 
 inline void *get_kernel_stack_base_from_slot(uint32_t pcb_slot) {
-	return (void*) (KERNEL_PAGE_END - (KERNEL_STACK_SIZE * (pcb_slot + 1)) + KERNEL_STACK_SIZE);
+    return (void*) (KERNEL_PAGE_END - (KERNEL_STACK_SIZE * (pcb_slot + 1)) + KERNEL_STACK_SIZE);
 }
 
 inline void *get_process_page_from_slot(uint32_t task_slot) {
-	return (void*) (KERNEL_PAGE_END + (PROCESS_PAGE_SIZE * task_slot));
+    return (void*) (KERNEL_PAGE_END + (PROCESS_PAGE_SIZE * task_slot));
 }
