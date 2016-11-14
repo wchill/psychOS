@@ -6,10 +6,10 @@ switch_to_ring_3:
 	cli
 
 	# eip
-	mov 	8(%esp), %ebx
+	mov 	8(%esp), %ebx   # 8 is offset to get EIP
 
 	# esp
-	mov 	4(%esp), %ecx
+	mov 	4(%esp), %ecx   # 4 is offset to get ESP
 
 	# Set segment registers
 	xor 	%eax, %eax
@@ -29,7 +29,7 @@ switch_to_ring_3:
 	pushf
 	# Enable interrupts
 	pop 	%eax
-	or 		$0x200, %eax
+	or 		$0x200, %eax  # the 0x200 is just 1 bit set in binary. We use it to enable interrupts.
 	push 	%eax
 
 	push 	$USER_CS

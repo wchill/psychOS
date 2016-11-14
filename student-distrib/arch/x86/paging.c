@@ -3,18 +3,28 @@
 
 static pt_entry vmem_pt[NUM_PT_ENTRIES] __attribute__((aligned (FOUR_KB_ALIGNED)));
 
+/**
+ * initialize_paging_structs
+ * Initializes paging structures by doing:
+ *    1) set up video memory
+ *    2) set up Kernel page
+ *    3) set up program pages for the processes
+ *    everything else is set to blank
+ * 
+ * @param local_pd  pointer to a Page Directory entry. We want it to be the 0th PD entry.
+ */
 void initialize_paging_structs(pd_entry *local_pd) {
-    /* Set up remaining Page Table Entries to be empty (8 MB to 4 GigaBytes) */
+    /* Make all Page Directory (PD) entries blank for now */
     {
         int i;
-        for(i = 0; i < NUM_PD_ENTRIES; i++) { // 2 represents Page Directory's 3rd entry corresponding to 8 MB in physical memory
+        for(i = 0; i < NUM_PD_ENTRIES; i++) {
             pd_entry blank;
             blank.present = 0;
             local_pd[i] = blank;
         }
     }
 
-    /* Set up 0th Page Table Entry (0 MB to 4 MB) */
+    /* Set up 0th Page Directory Entry (0 MB to 4 MB) */
     {
         pd_entry video_mem_entry; /* An entry representing first 4 MB of physical memory */
         int i;
@@ -54,7 +64,7 @@ void initialize_paging_structs(pd_entry *local_pd) {
         }
     }
 
-    /* Set up 1st Page Table Entry (4 MB to 8 MB) */
+    /* Set up 1st Page Directory Entry (4 MB to 8 MB) */
     {
         pd_entry kernel_page_entry;
 
@@ -78,8 +88,7 @@ void initialize_paging_structs(pd_entry *local_pd) {
         for(i = 0; i < MAX_PROCESSES; i++) {
             pd_entry process_page_entry;
 
-            // Clear bottom 12 bits, shift over 12 bits
-            process_page_entry.physical_addr_31_to_12 = 2048 + 1024 * i;
+            process_page_entry.physical_addr_31_to_12 = 2048 + 1024 * i; // 2048 represents address 8 MegaBytes. 1024 represents 4 MB. we want program 1 at 8 MB, program 2 at 12 MB, etc.
             process_page_entry.global_ignored  = 0;
             process_page_entry.page_size       = 1;
             process_page_entry.dirty_ignored   = 0;
@@ -90,19 +99,25 @@ void initialize_paging_structs(pd_entry *local_pd) {
             process_page_entry.read_write      = 1;
             process_page_entry.present         = 1;
 
-            local_pd[2 + i] = process_page_entry;
+            local_pd[2 + i] = process_page_entry; // 2 represents the offset so that the process pages start at 8 MB
         }
     }
 }
 
+/**
+ * setup_process_paging
+ * Sets up a 4 MB page for a single process
+ * 
+ * @param local_pd      pointer to a Page Directory entry. We us it as an array of page directory entries.
+ * @param process_addr  a pointer to processes address.
+ */
 void setup_process_paging(pd_entry *local_pd, void *process_addr) {
     initialize_paging_structs(local_pd);
-    /* Set up Process Page Table Entry (128MB to 132MB -> process_addr) */
+    /* Set up Process Page Directory Entry (128MB to 132MB -> process_addr) */
     {
         pd_entry process_page_entry;
 
-        // Clear bottom 12 bits, shift over 12 bits
-        process_page_entry.physical_addr_31_to_12 = ((uint32_t) process_addr & ~(FOUR_MB_ALIGNED - 1)) >> ADDRESS_SHIFT;
+        process_page_entry.physical_addr_31_to_12 = ((uint32_t) process_addr & ~(FOUR_MB_ALIGNED - 1)) >> ADDRESS_SHIFT; // Rodney: Is bitmask redundant? Won't process_addr already have bottom 22 bits as 0?
         process_page_entry.global_ignored  = 0;
         process_page_entry.page_size       = 1;
         process_page_entry.dirty_ignored   = 0;
@@ -113,6 +128,6 @@ void setup_process_paging(pd_entry *local_pd, void *process_addr) {
         process_page_entry.read_write      = 1;
         process_page_entry.present         = 1;
 
-        local_pd[32] = process_page_entry;
+        local_pd[32] = process_page_entry; // 32 represents the PD entry that will correspond to 128 MB in physical memory (since 32 * 4 = 128)
     }
 }

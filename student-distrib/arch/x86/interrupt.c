@@ -5,7 +5,7 @@
 #include <tty/terminal.h>
 #include <arch/x86/x86_desc.h>
 
-
+/* Human-readable errors for the 32 possible Exceptions (Entries 0-31 in IDT table) */
 static const char *human_readable_errors[] = {
 	"Divide-by-zero",
 	"Debug",
@@ -42,6 +42,7 @@ static const char *human_readable_errors[] = {
 	"Triple fault"
 };
 
+/* 32-element array for the 32 Exceptions. Only a few of them have error codes, as indicated in array. */
 static const int has_error_code[] = {
 	0, 0, 0, 0, 0, 0, 0, 0,
 	1, 0, 1, 1, 1, 1, 1, 0,
@@ -79,8 +80,14 @@ void install_interrupt_handler(uint8_t interrupt_num, void *handler, uint8_t seg
 	idt[interrupt_num] = exception_handle_desc;
 }
 
+/**
+ * interpret_exception
+ * Returns human-readable errors for interrupt numbers 0-31, and "Unknown" for numbers 32-255.
+ * 
+ * @param int_num  The interrupt number (From 0-255).
+ */
 const char *interpret_exception(uint32_t int_num) {
-	if(int_num >= 32) return "Unknown";
+	if(int_num >= NUM_RESERVED_VEC) return "Unknown";
 
 	return human_readable_errors[int_num];
 }

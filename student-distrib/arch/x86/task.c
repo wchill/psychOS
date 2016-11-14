@@ -98,6 +98,16 @@ uint32_t get_executable_entrypoint(const void *executable) {
 	return addr;
 }
 
+/**
+ * parse_args
+ * Checks the command the user typed and parses for arguments that it saves into a buffer.
+ *
+ * @param command  The command typed by the user. Will be parsed.
+ * @param buf      The buffer to save the arguments into
+ *
+ * @return         The length of the buffer that represents the arguments. Will be 0 if no arguments.
+ *
+ */
 int32_t parse_args(const int8_t *command, int8_t *buf) {
 	// Parse args
 	int index = 0;
