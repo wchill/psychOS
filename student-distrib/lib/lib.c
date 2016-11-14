@@ -503,4 +503,3 @@ strncpy(int8_t* dest, const int8_t* src, uint32_t n)
 
     return dest;
 }
-

@@ -14,4 +14,3 @@ void outportw(uint16_t port, uint16_t data);
 void outportl(uint16_t port, uint32_t data);
 
 #endif
-

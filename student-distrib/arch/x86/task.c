@@ -6,6 +6,90 @@
 #include <tty/terminal.h>
 
 /**
+ * get_pcb_from_esp
+ * Get a process's Process Control Block given its current stack pointer.
+ * 
+ * @param process_esp   Pointer to the process's current stack
+ *
+ * @returns             A pointer to the process's PCB
+ */
+inline pcb_t *get_pcb_from_esp(void *process_esp) {
+    // The PCB is at the end of the process's kernel stack
+    // Subtract 1 first in case stack hasn't been used yet (otherwise
+    // the bitmask won't do anything), then AND out the bits representing
+    // 8kB worth of memory space
+    return (pcb_t *) ((uint32_t) (process_esp - 1) & PCB_BITMASK);
+}
+
+/**
+ * get_pcb_from_slot
+ * Get a process's Process Control Block given its current process slot.
+ * 
+ * @param pcb_slot  The process's current process slot
+ *
+ * @returns         A pointer to the process's PCB
+ */
+inline pcb_t *get_pcb_from_slot(uint32_t pcb_slot) {
+    // Take the end of the kernel page, subtract (8kB * (process # + 1)) to get
+    // to the end of that process's kernel stack, which is also where its PCB is
+    return (pcb_t*) (KERNEL_PAGE_END - (KERNEL_STACK_SIZE * (pcb_slot + 1)));
+}
+
+/**
+ * get_current_pcb
+ * Get the current process's Process Control Block.
+ *
+ * @returns     A pointer to the process's PCB
+ */
+inline pcb_t *get_current_pcb() {
+    // To get the current kernel stack pointer so we can get the PCB,
+    // we just allocate a stack variable and take its address
+    int stack_var = 0;
+    return get_pcb_from_esp(&stack_var);
+}
+
+/**
+ * get_current_kernel_stack_base
+ * Get a pointer to the beginning of the current process's kernel stack.
+ *
+ * @returns     A pointer to the start of the current process's kernel stack
+ */
+inline void *get_current_kernel_stack_base() {
+    // Determine current stack pointer, determine the end of the stack, then add
+    // the size of the stack to get to the beginning
+    int stack_var = 0;
+    return (void*) (((uint32_t) &stack_var & PCB_BITMASK) + KERNEL_STACK_SIZE);
+}
+
+/**
+ * get_kernel_stack_base_from_slot
+ * Get a pointer to the beginning of the current process's kernel stack.
+ *
+ * @param pcb_slot  The process's current process slot
+ *
+ * @returns         A pointer to the start of the process's kernel stack
+ */
+inline void *get_kernel_stack_base_from_slot(uint32_t pcb_slot) {
+    // Starting from the end of the kernel page, subtract (8kB * process #)
+    // to get to the beginning of a process stack
+    return (void*) (KERNEL_PAGE_END - (KERNEL_STACK_SIZE * pcb_slot));
+}
+
+/**
+ * get_process_page_from_slot
+ * Get a pointer to the beginning of a process's 4MB memory page.
+ * 
+ * @param task_slot     The process's current process slot
+ *
+ * @returns             A pointer to the start of the process's memory page
+ */
+inline void *get_process_page_from_slot(uint32_t task_slot) {
+    // Starting from the end of the kernel page, add (4MB * process #)
+    // to get to the beginning of a process page
+    return (void*) (KERNEL_PAGE_END + (PROCESS_PAGE_SIZE * task_slot));
+}
+
+/**
  * open_stdin_and_stdout
  * "Opens" stdin and stdout for the given process.
  * 
@@ -182,88 +266,4 @@ uint32_t load_program_into_slot(const int8_t *filename, uint32_t pcb_slot) {
     if(retval < 0) return NULL;
 
     return get_executable_entrypoint(process_page + PROCESS_LINK_OFFSET);
-}
-
-/**
- * get_pcb_from_esp
- * Get a process's Process Control Block given its current stack pointer.
- * 
- * @param process_esp   Pointer to the process's current stack
- *
- * @returns             A pointer to the process's PCB
- */
-inline pcb_t *get_pcb_from_esp(void *process_esp) {
-    // The PCB is at the end of the process's kernel stack
-    // Subtract 1 first in case stack hasn't been used yet (otherwise
-    // the bitmask won't do anything), then AND out the bits representing
-    // 8kB worth of memory space
-    return (pcb_t *) ((uint32_t) (process_esp - 1) & PCB_BITMASK);
-}
-
-/**
- * get_pcb_from_slot
- * Get a process's Process Control Block given its current process slot.
- * 
- * @param pcb_slot  The process's current process slot
- *
- * @returns         A pointer to the process's PCB
- */
-inline pcb_t *get_pcb_from_slot(uint32_t pcb_slot) {
-    // Take the end of the kernel page, subtract (8kB * (process # + 1)) to get
-    // to the end of that process's kernel stack, which is also where its PCB is
-    return (pcb_t*) (KERNEL_PAGE_END - (KERNEL_STACK_SIZE * (pcb_slot + 1)));
-}
-
-/**
- * get_current_pcb
- * Get the current process's Process Control Block.
- *
- * @returns     A pointer to the process's PCB
- */
-inline pcb_t *get_current_pcb() {
-    // To get the current kernel stack pointer so we can get the PCB,
-    // we just allocate a stack variable and take its address
-    int stack_var = 0;
-    return get_pcb_from_esp(&stack_var);
-}
-
-/**
- * get_current_kernel_stack_base
- * Get a pointer to the beginning of the current process's kernel stack.
- *
- * @returns     A pointer to the start of the current process's kernel stack
- */
-inline void *get_current_kernel_stack_base() {
-    // Determine current stack pointer, determine the end of the stack, then add
-    // the size of the stack to get to the beginning
-    int stack_var = 0;
-    return (void*) (((uint32_t) &stack_var & PCB_BITMASK) + KERNEL_STACK_SIZE);
-}
-
-/**
- * get_kernel_stack_base_from_slot
- * Get a pointer to the beginning of the current process's kernel stack.
- *
- * @param pcb_slot  The process's current process slot
- *
- * @returns         A pointer to the start of the process's kernel stack
- */
-inline void *get_kernel_stack_base_from_slot(uint32_t pcb_slot) {
-    // Starting from the end of the kernel page, subtract (8kB * process #)
-    // to get to the beginning of a process stack
-    return (void*) (KERNEL_PAGE_END - (KERNEL_STACK_SIZE * pcb_slot));
-}
-
-/**
- * get_process_page_from_slot
- * Get a pointer to the beginning of a process's 4MB memory page.
- * 
- * @param task_slot     The process's current process slot
- *
- * @returns             A pointer to the start of the process's memory page
- */
-inline void *get_process_page_from_slot(uint32_t task_slot) {
-    // Starting from the end of the kernel page, add (4MB * process #)
-    // to get to the beginning of a process page
-    return (void*) (KERNEL_PAGE_END + (PROCESS_PAGE_SIZE * task_slot));
 }
