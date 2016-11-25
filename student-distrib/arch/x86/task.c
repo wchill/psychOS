@@ -147,7 +147,7 @@ void kernel_run_first_program(const int8_t* command) {
     parse_command(command, child_pcb->program_name, child_pcb->args);
 
     // Load program and determine entrypoint
-    uint32_t entrypoint = load_program_into_slot(command, child_pcb->slot_num);
+    uint32_t entrypoint = load_program_into_slot(child_pcb->program_name, child_pcb->slot_num);
     if(entrypoint == NULL) return;
 
     // Prepare for context switch
