@@ -16,6 +16,7 @@
 
 #define MAX_PROCESSES 2
 #define MAX_FILE_DESCRIPTORS 8
+#define MAX_PROGRAM_NAME_LENGTH 128  // Rodney: I picked this length arbitrarily
 #define MAX_ARGS_LENGTH 128
 
 #define PROCESS_LINK_OFFSET 0x48000
@@ -30,6 +31,7 @@ struct pcb_t {
 		uint32_t ebp;
 	} regs;
 	file_t fa[MAX_FILE_DESCRIPTORS];
+	int8_t program_name[MAX_PROGRAM_NAME_LENGTH];
 	int8_t args[MAX_ARGS_LENGTH];
 	uint32_t slot_num;
 	uint32_t pid;
@@ -54,7 +56,7 @@ pcb_t *get_current_pcb();
 void *get_process_page_from_slot(uint32_t task_slot);
 void *get_current_kernel_stack_base();
 void *get_kernel_stack_base_from_slot(uint32_t pcb_slot);
-int32_t parse_args(const int8_t* command, int8_t *buf);
+int32_t parse_command(const int8_t* command, int8_t *buf_name, int8_t *buf_args);
 uint32_t load_program_into_slot(const int8_t *filename, uint32_t pcb_slot);
 
 extern void switch_to_ring_3(uint32_t esp, uint32_t eip);

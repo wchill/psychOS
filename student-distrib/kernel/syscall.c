@@ -110,12 +110,14 @@ int32_t syscall_close(int32_t fd) {
 }
 
 /**
- * syscall_open
- * Open a file.
+ * syscall_read
+ * Reads from a file (and writes it to a buffer)
  * 
- * @param filename  The name of the file to open
+ * @param fd     File descriptor of file to read from.
+ * @param buf    The buffer to write to.
+ * @param nbytes The number of bytes to (try to) read.
  *
- * @return          The file descriptor of the new file, or -1 on failure
+ * @return       The number of bytes read
  */
 int32_t syscall_read(int32_t fd, void *buf, int32_t nbytes) {
 
@@ -132,12 +134,14 @@ int32_t syscall_read(int32_t fd, void *buf, int32_t nbytes) {
 }
 
 /**
- * syscall_open
- * Open a file.
+ * syscall_write
+ * Writes to a file (by reading from a buffer)
  * 
- * @param filename  The name of the file to open
+ * @param fd     File descriptor of file to write to.
+ * @param buf    The buffer to read from.
+ * @param nbytes The number of bytes to (try to) write.
  *
- * @return          The file descriptor of the new file, or -1 on failure
+ * @return       The number of bytes written
  */
 int32_t syscall_write(int32_t fd, const void *buf, int32_t nbytes) {
 
@@ -184,8 +188,11 @@ int32_t syscall_execute(const int8_t *command) {
     // No free PCB slots available
     if(child_pcb == NULL) return -1;
 
+    // Save program name and args in the child process's PCB
+    parse_command(command, child_pcb->program_name, child_pcb->args);
+
     // Load executable and check validity
-    uint32_t entrypoint = load_program_into_slot(command, child_pcb->slot_num);
+    uint32_t entrypoint = load_program_into_slot(child_pcb->program_name, child_pcb->slot_num);
     if(entrypoint == NULL) return -1;
 
     // Set up the child process's PCB
@@ -195,9 +202,6 @@ int32_t syscall_execute(const int8_t *command) {
     child_pcb->in_use = 1;
     child_pcb->pid = pid++;
     open_stdin_and_stdout(child_pcb);
-
-    // Save args in the child process's PCB
-    parse_args(command, child_pcb->args);
 
     // Set up paging for the new child process
     setup_process_paging(child_pcb->process_pd, get_process_page_from_slot(child_pcb->slot_num));
@@ -314,8 +318,31 @@ int32_t syscall_halt(uint32_t status) {
     return -1;
 }
 
+/**
+ * syscall_getargs
+ * PCB already has arguments saved when a new program was loaded. This copies the arguments into a user-level buffer.
+ * 
+ * @param buf     A user-level buffer to copy arguments into
+ * @param nbytes  Size of the buffer (Rodney: This is my best guess as to what this is)
+ *
+ * @return        
+ */
 int32_t syscall_getargs(uint8_t *buf, int32_t nbytes) {
-    return -1;
+    if (buf == NULL){
+        return -1;
+    }
+
+    pcb_t *child_pcb = get_current_pcb();
+    
+    // Error check: Make sure buffer is big enough to fit all the arguments.
+    uint32_t args_length = strlen((const int8_t *) child_pcb->args) + 1; // We add 1 to count the '\0' at end of string that strlen() does not account for.
+    if (nbytes < args_length){
+        return -1;
+    }
+    // Copy Data
+    strcpy((int8_t *) buf, (const int8_t *) child_pcb->args);
+
+    return 0;
 }
 
 int32_t syscall_vidmap(uint8_t **screen_start) {
