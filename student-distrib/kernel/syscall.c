@@ -184,8 +184,18 @@ int32_t syscall_execute(const int8_t *command) {
     // No free PCB slots available
     if(child_pcb == NULL) return -1;
 
+    int8_t command_name[128];
+    for(i = 0; i < 128; i++) {
+        int8_t ch = command[i];
+        if(ch == '\0' || ch == ' ') {
+            break;
+        }
+        command_name[i] = ch;
+    }
+    command_name[i] = '\0';
+
     // Load executable and check validity
-    uint32_t entrypoint = load_program_into_slot(command, child_pcb->slot_num);
+    uint32_t entrypoint = load_program_into_slot(command_name, child_pcb->slot_num);
     if(entrypoint == NULL) return -1;
 
     // Set up the child process's PCB
@@ -200,7 +210,7 @@ int32_t syscall_execute(const int8_t *command) {
     parse_args(command, child_pcb->args);
 
     // Set up paging for the new child process
-    setup_process_paging(child_pcb->process_pd, get_process_page_from_slot(child_pcb->slot_num));
+    setup_process_paging(child_pcb->process_pd, get_process_page_from_slot(child_pcb->slot_num), child_pcb->slot_num);
     enable_paging(child_pcb->process_pd);
 
     // Prepare for context switch: set the new kernel stack in the TSS and save esp/ebp registers
@@ -315,11 +325,31 @@ int32_t syscall_halt(uint32_t status) {
 }
 
 int32_t syscall_getargs(uint8_t *buf, int32_t nbytes) {
-    return -1;
+    if(nbytes < 0) return -1;
+
+    pcb_t *pcb = get_current_pcb();
+
+    // args length can be at most MAX_ARGS_LEN (127)
+    int32_t args_len = strlen(pcb->args);
+    if(nbytes < args_len) return -1;
+
+    strncpy(buf, pcb->args, args_len);
+    buf[args_len] = '\0';
+
+    return 0;
 }
 
 int32_t syscall_vidmap(uint8_t **screen_start) {
-    return -1;
+    pcb_t *pcb = get_current_pcb();
+    uint32_t target_addr = (uint32_t) screen_start;
+
+    // Check if pointer is in target page bounds
+    if(!(PROCESS_VIRT_PAGE_START <= target_addr && target_addr < PROCESS_VIRT_PAGE_START + PROCESS_PAGE_SIZE)) {
+        return -1;
+    }
+
+    get_process_vmem_page(pcb->slot_num, screen_start);
+    return 0;
 }
 
 int32_t syscall_set_handler(int32_t signum, void *handler_address) {

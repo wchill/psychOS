@@ -132,7 +132,7 @@ void kernel_run_first_program(const int8_t* command) {
     pcb_t *child_pcb = get_pcb_from_slot(0);
 
     // Process paging
-    setup_process_paging(child_pcb->process_pd, get_process_page_from_slot(child_pcb->slot_num));
+    setup_process_paging(child_pcb->process_pd, get_process_page_from_slot(child_pcb->slot_num), child_pcb->slot_num);
     enable_paging(child_pcb->process_pd);
 
     // Initialize terminal for programs to use
@@ -226,7 +226,7 @@ int32_t parse_args(const int8_t *command, int8_t *buf) {
     int start = 0;
     int len = 0;
     int8_t ch;
-    while((ch = command[index++]) != '\0') {
+    while((ch = command[index++]) != '\0' && index) {
         // Find the first character after space
         if (ch == ' ') {
             while(ch == ' ') {
@@ -240,6 +240,9 @@ int32_t parse_args(const int8_t *command, int8_t *buf) {
     // If there were any args, then get their length and copy
     if(start > 0) {
         len = strlen(&command[start]);
+        if(len > MAX_ARGS_LENGTH) {
+            len = MAX_ARGS_LENGTH;
+        }
         memcpy(buf, &command[start], len);
     }
 

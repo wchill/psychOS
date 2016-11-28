@@ -16,10 +16,11 @@
 
 #define MAX_PROCESSES 2
 #define MAX_FILE_DESCRIPTORS 8
-#define MAX_ARGS_LENGTH 128
+#define MAX_ARGS_LENGTH 127
 
 #define PROCESS_LINK_OFFSET 0x48000
-#define PROCESS_LINK_START 0x8048000
+#define PROCESS_VIRT_PAGE_START 0x8000000
+#define PROCESS_LINK_START (PROCESS_VIRT_PAGE_START + PROCESS_LINK_OFFSET)
 
 typedef struct pcb_t pcb_t;
 
@@ -30,7 +31,7 @@ struct pcb_t {
 		uint32_t ebp;
 	} regs;
 	file_t fa[MAX_FILE_DESCRIPTORS];
-	int8_t args[MAX_ARGS_LENGTH];
+	int8_t args[MAX_ARGS_LENGTH + 1];
 	uint32_t slot_num;
 	uint32_t pid;
 	pcb_t *parent;

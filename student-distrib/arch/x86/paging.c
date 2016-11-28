@@ -2,6 +2,7 @@
 #include <arch/x86/task.h>
 
 static pt_entry vmem_pt[NUM_PT_ENTRIES] __attribute__((aligned (FOUR_KB_ALIGNED)));
+static pt_entry process_vmem_pt[NUM_PT_ENTRIES] __attribute__((aligned (FOUR_KB_ALIGNED)));
 
 /**
  * initialize_paging_structs
@@ -102,6 +103,49 @@ void initialize_paging_structs(pd_entry *local_pd) {
             local_pd[2 + i] = process_page_entry; // 2 represents the offset so that the process pages start at 8 MB
         }
     }
+
+    {
+        pd_entry video_mem_entry; /* An entry representing first 4 MB of physical memory */
+        int i;
+
+        video_mem_entry.physical_addr_31_to_12 = (uint32_t) &process_vmem_pt[0] >> ADDRESS_SHIFT;
+        video_mem_entry.global_ignored  = 0;
+        video_mem_entry.page_size       = 0;
+        video_mem_entry.dirty_ignored   = 0;
+        video_mem_entry.accessed        = 0;
+        video_mem_entry.cache_disabled  = 0;
+        video_mem_entry.write_through   = 0;
+        video_mem_entry.user_accessible = 1;
+        video_mem_entry.read_write      = 1;
+        video_mem_entry.present         = 1;
+
+        // 132MB to 136MB
+        local_pd[33] = video_mem_entry;
+
+        for(i = 0; i < MAX_PROCESSES; i++) {
+            pt_entry my_entry;
+
+            my_entry.physical_addr_31_to_12 = (uint32_t) VIDEO_PHYSICAL_ADDR >> ADDRESS_SHIFT;
+            my_entry.global                 = 1;
+            my_entry.page_size_ignored      = 0;
+            my_entry.dirty                  = 0;
+            my_entry.accessed               = 0;
+            my_entry.cache_disabled         = 0;
+            my_entry.write_through          = 0;
+            my_entry.user_accessible        = 0;
+            my_entry.read_write             = 1;
+            my_entry.present                = 1;
+
+            process_vmem_pt[i] = my_entry;
+        }
+
+        for(i = MAX_PROCESSES; i < NUM_PT_ENTRIES; i++) {
+            pt_entry my_entry;
+            my_entry.present = 0;
+
+            process_vmem_pt[i] = my_entry;
+        }
+    }
 }
 
 /**
@@ -111,7 +155,7 @@ void initialize_paging_structs(pd_entry *local_pd) {
  * @param local_pd      pointer to a Page Directory entry. We us it as an array of page directory entries.
  * @param process_addr  a pointer to processes address.
  */
-void setup_process_paging(pd_entry *local_pd, void *process_addr) {
+void setup_process_paging(pd_entry *local_pd, void *process_addr, uint32_t slot_num) {
     initialize_paging_structs(local_pd);
     /* Set up Process Page Directory Entry (128MB to 132MB -> process_addr) */
     {
@@ -130,4 +174,11 @@ void setup_process_paging(pd_entry *local_pd, void *process_addr) {
 
         local_pd[32] = process_page_entry; // 32 represents the PD entry that will correspond to 128 MB in physical memory (since 32 * 4 = 128)
     }
+
+    // Set up video memory page entry
+    process_vmem_pt[slot_num].user_accessible = 1;
+}
+
+void get_process_vmem_page(uint32_t process_slot, uint8_t **vmem_addr) {
+    *vmem_addr = (uint8_t*) (33 * FOUR_MB_ALIGNED + process_slot * FOUR_KB_ALIGNED);
 }
