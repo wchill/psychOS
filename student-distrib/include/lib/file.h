@@ -15,7 +15,7 @@ typedef struct file_ops {
 } file_ops;
 
 struct file_t {
-    file_ops    fops;          // a pointer to methods that we can use to manipulate file data (open, close, read, write)
+    file_ops    *fops;          // a pointer to methods that we can use to manipulate file data (open, close, read, write)
     uint32_t    file_position; // a pointer within file. Will tell us where to read/write within the file.
     uint32_t    flags;         // in our case it's not for synchronization. It will be used to indicate if file descriptor is busy or free
     uint32_t    inode;         // a number that indicates which file we are talking about.

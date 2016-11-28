@@ -96,20 +96,29 @@ inline void *get_process_page_from_slot(uint32_t task_slot) {
  * @param pcb   Pointer to a Process Control Block for some process.
  */
 void open_stdin_and_stdout(pcb_t *pcb) {
+    // Open, read, write, close
+    static file_ops stdin_fops = {
+        NULL,
+        terminal_read,
+        NULL,
+        NULL
+    };
+
+    static file_ops stdout_fops = {
+        NULL,
+        NULL,
+        terminal_write,
+        NULL
+    };
+
     // stdin
     pcb->fa[0].flags = FILE_IN_USE;
-    pcb->fa[0].fops.open = NULL;
-    pcb->fa[0].fops.close = NULL;
-    pcb->fa[0].fops.read = terminal_read;
-    pcb->fa[0].fops.write = NULL;
+    pcb->fa[0].fops = &stdin_fops;
     pcb->fa[0].file_position = 0;
 
     // stdout
     pcb->fa[1].flags = FILE_IN_USE;
-    pcb->fa[1].fops.open = NULL;
-    pcb->fa[1].fops.close = NULL;
-    pcb->fa[1].fops.read = NULL;
-    pcb->fa[1].fops.write = terminal_write;
+    pcb->fa[1].fops = &stdout_fops;
     pcb->fa[1].file_position = 0;
 }
 
@@ -266,6 +275,9 @@ uint32_t load_program_into_slot(const int8_t *filename, uint32_t pcb_slot) {
 
     // File doesn't exist
     if(retval < 0) return NULL;
+
+    // Can't possibly be a valid program (<= size of ELF header)
+    if(retval <= ELF_MAGIC_HEADER_LEN) return NULL;
 
     return get_executable_entrypoint(process_page + PROCESS_LINK_OFFSET);
 }

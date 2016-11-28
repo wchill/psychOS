@@ -119,10 +119,12 @@ void initialize_paging_structs(pd_entry *local_pd) {
         video_mem_entry.read_write      = 1;
         video_mem_entry.present         = 1;
 
-        // 132MB to 136MB
+        // Page directory entry for 132MB - 136MB (132MB = 4MB * 33)
         local_pd[33] = video_mem_entry;
 
         for(i = 0; i < MAX_PROCESSES; i++) {
+            // Initialize page table entry for each process
+            // Make it not user accessible until we actually load that process
             pt_entry my_entry;
 
             my_entry.physical_addr_31_to_12 = (uint32_t) VIDEO_PHYSICAL_ADDR >> ADDRESS_SHIFT;
@@ -140,6 +142,7 @@ void initialize_paging_structs(pd_entry *local_pd) {
         }
 
         for(i = MAX_PROCESSES; i < NUM_PT_ENTRIES; i++) {
+            // We only support up to MAX_PROCESSES, rest of the page table entries should be non present
             pt_entry my_entry;
             my_entry.present = 0;
 
@@ -175,10 +178,12 @@ void setup_process_paging(pd_entry *local_pd, void *process_addr, uint32_t slot_
         local_pd[32] = process_page_entry; // 32 represents the PD entry that will correspond to 128 MB in physical memory (since 32 * 4 = 128)
     }
 
-    // Set up video memory page entry
+    // Make process video memory user accessible
     process_vmem_pt[slot_num].user_accessible = 1;
 }
 
-void get_process_vmem_page(uint32_t process_slot, uint8_t **vmem_addr) {
-    *vmem_addr = (uint8_t*) (33 * FOUR_MB_ALIGNED + process_slot * FOUR_KB_ALIGNED);
+void *get_process_vmem_page(uint32_t process_slot) {
+    // Formula: 132MB (33 * 4MB) + (process number * 4KB)
+    // 1st process's video memory starts at 132MB, 2nd process at 132MB + 4KB, 3rd at 132MB + 8KB, ...
+    return (void*) (33 * FOUR_MB_ALIGNED + process_slot * FOUR_KB_ALIGNED);
 }

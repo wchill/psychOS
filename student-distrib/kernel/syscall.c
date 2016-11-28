@@ -10,6 +10,28 @@
 #define DIRECTORY_FT 1
 #define FILE_FT 2
 
+// Declare fops structs for use in process file array
+static file_ops file_fops = {
+    file_open,
+    file_read,
+    file_write,
+    file_close
+};
+
+static file_ops dir_fops = {
+    dir_open,
+    dir_read,
+    dir_write,
+    dir_close
+};
+
+static file_ops rtc_fops = {
+    rtc_open,
+    rtc_read,
+    rtc_write,
+    rtc_close
+};
+
 /**
  * syscall_open
  * Open a file.
@@ -46,29 +68,20 @@ int32_t syscall_open(const uint8_t *filename) {
     // fill in table pointer in file array at the index of the file descriptor
     switch(dentry.file_type) {
         case FILE_FT:
-            PCB->fa[fd].fops.open  = file_open;
-            PCB->fa[fd].fops.close = file_close;
-            PCB->fa[fd].fops.read  = file_read;
-            PCB->fa[fd].fops.write = file_write;
+            PCB->fa[fd].fops = &file_fops;
             break;
         case RTC_FT:
-            PCB->fa[fd].fops.open  = rtc_open;
-            PCB->fa[fd].fops.close = rtc_close;
-            PCB->fa[fd].fops.read  = rtc_read;
-            PCB->fa[fd].fops.write = rtc_write;
+            PCB->fa[fd].fops = &rtc_fops;
             break;
         case DIRECTORY_FT:
-            PCB->fa[fd].fops.open  = dir_open;
-            PCB->fa[fd].fops.close = dir_close;
-            PCB->fa[fd].fops.read  = dir_read;
-            PCB->fa[fd].fops.write = dir_write;
+            PCB->fa[fd].fops = &dir_fops;
             break;
         default:
             return -1;
     }
 
     // call the open function, checking for error code
-    int32_t retval = PCB->fa[fd].fops.open(&PCB->fa[fd], (const int8_t*) filename);
+    int32_t retval = PCB->fa[fd].fops->open(&PCB->fa[fd], (const int8_t*) filename);
     if(retval < 0) return retval;
 
     // mark this file descriptor as taken
@@ -93,19 +106,20 @@ int32_t syscall_open(const uint8_t *filename) {
  * @return          0 on success, -1 on failure
  */
 int32_t syscall_close(int32_t fd) {
+    if(fd < 0 || fd >= MAX_FILE_DESCRIPTORS) return -1;
 
     // get the process control block
     pcb_t *PCB = get_current_pcb();
 
     // Check if this fd is valid and if close is defined for it.
     if(!(PCB->fa[fd].flags & FILE_IN_USE)) return -1;
-    if(PCB->fa[fd].fops.close == NULL) return -1;
+    if(PCB->fa[fd].fops->close == NULL) return -1;
 
     // Mark the file descriptor as unused
     PCB->fa[fd].flags &= ~(FILE_IN_USE);
 
     // call the close function
-    return PCB->fa[fd].fops.close(&PCB->fa[fd]);
+    return PCB->fa[fd].fops->close(&PCB->fa[fd]);
 
 }
 
@@ -120,17 +134,18 @@ int32_t syscall_close(int32_t fd) {
  * @return       The number of bytes read
  */
 int32_t syscall_read(int32_t fd, void *buf, int32_t nbytes) {
+    if(fd < 0 || fd >= MAX_FILE_DESCRIPTORS) return -1;
 
     // get the process control block
     pcb_t *PCB = get_current_pcb();
 
     // Check if this fd is valid and if read is defined for it.
     if(!(PCB->fa[fd].flags & FILE_IN_USE)) return -1;
-    if(PCB->fa[fd].fops.read == NULL) return -1;
+    if(PCB->fa[fd].fops->read == NULL) return -1;
 
     // call the read function
     // Individual file operations should update file positions
-    return PCB->fa[fd].fops.read(&PCB->fa[fd], buf, nbytes);
+    return PCB->fa[fd].fops->read(&PCB->fa[fd], buf, nbytes);
 }
 
 /**
@@ -144,17 +159,18 @@ int32_t syscall_read(int32_t fd, void *buf, int32_t nbytes) {
  * @return       The number of bytes written
  */
 int32_t syscall_write(int32_t fd, const void *buf, int32_t nbytes) {
+    if(fd < 0 || fd >= MAX_FILE_DESCRIPTORS) return -1;
 
     // get the process control block
     pcb_t *PCB = get_current_pcb();
 
     // Check if this fd is valid and if write is defined for it.
     if(!(PCB->fa[fd].flags & FILE_IN_USE)) return -1;
-    if(PCB->fa[fd].fops.write == NULL) return -1;
+    if(PCB->fa[fd].fops->write == NULL) return -1;
 
     // call the write function
     // Individual file operations should update file positions
-    return PCB->fa[fd].fops.write(&PCB->fa[fd], buf, nbytes);
+    return PCB->fa[fd].fops->write(&PCB->fa[fd], buf, nbytes);
 
 }
 
@@ -354,7 +370,8 @@ int32_t syscall_vidmap(uint8_t **screen_start) {
         return -1;
     }
 
-    get_process_vmem_page(pcb->slot_num, screen_start);
+    // Update the process's pointer to video memory
+    *screen_start = (uint8_t*) get_process_vmem_page(pcb->slot_num);
     return 0;
 }
 

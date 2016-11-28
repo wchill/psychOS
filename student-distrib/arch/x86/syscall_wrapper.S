@@ -52,5 +52,5 @@ syscall_handler_wrapper:
 	iret
 
 	invalid_syscall_num:
-	mov -1, %eax
+	mov $-1, %eax
 	iret
