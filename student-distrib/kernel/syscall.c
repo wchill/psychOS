@@ -32,6 +32,9 @@ static file_ops rtc_fops = {
     rtc_close
 };
 
+// Store pointers to above fops structs
+static file_ops *fops_table[3] = {&rtc_fops, &dir_fops, &file_fops};
+
 /**
  * syscall_open
  * Open a file.
@@ -65,20 +68,13 @@ int32_t syscall_open(const uint8_t *filename) {
     // File does not exist
     if(res < 0) return -1;
 
-    // fill in table pointer in file array at the index of the file descriptor
-    switch(dentry.file_type) {
-        case FILE_FT:
-            PCB->fa[fd].fops = &file_fops;
-            break;
-        case RTC_FT:
-            PCB->fa[fd].fops = &rtc_fops;
-            break;
-        case DIRECTORY_FT:
-            PCB->fa[fd].fops = &dir_fops;
-            break;
-        default:
-            return -1;
+    // Not a valid file type
+    if(dentry.file_type > FILE_FT) {
+        return -1;
     }
+
+    // fill in table pointer in file array at the index of the file descriptor
+    PCB->fa[fd].fops = fops_table[dentry.file_type];
 
     // call the open function, checking for error code
     int32_t retval = PCB->fa[fd].fops->open(&PCB->fa[fd], (const int8_t*) filename);
@@ -134,6 +130,7 @@ int32_t syscall_close(int32_t fd) {
  * @return       The number of bytes read
  */
 int32_t syscall_read(int32_t fd, void *buf, int32_t nbytes) {
+    /* Error handling */
     if(fd < 0 || fd >= MAX_FILE_DESCRIPTORS) return -1;
 
     // get the process control block
@@ -143,7 +140,7 @@ int32_t syscall_read(int32_t fd, void *buf, int32_t nbytes) {
     if(!(PCB->fa[fd].flags & FILE_IN_USE)) return -1;
     if(PCB->fa[fd].fops->read == NULL) return -1;
 
-    // call the read function
+    /* Actually call the read function */
     // Individual file operations should update file positions
     return PCB->fa[fd].fops->read(&PCB->fa[fd], buf, nbytes);
 }
@@ -159,6 +156,7 @@ int32_t syscall_read(int32_t fd, void *buf, int32_t nbytes) {
  * @return       The number of bytes written
  */
 int32_t syscall_write(int32_t fd, const void *buf, int32_t nbytes) {
+    /* Error handling */
     if(fd < 0 || fd >= MAX_FILE_DESCRIPTORS) return -1;
 
     // get the process control block
@@ -168,7 +166,7 @@ int32_t syscall_write(int32_t fd, const void *buf, int32_t nbytes) {
     if(!(PCB->fa[fd].flags & FILE_IN_USE)) return -1;
     if(PCB->fa[fd].fops->write == NULL) return -1;
 
-    // call the write function
+    /* Actually call the write function */
     // Individual file operations should update file positions
     return PCB->fa[fd].fops->write(&PCB->fa[fd], buf, nbytes);
 
