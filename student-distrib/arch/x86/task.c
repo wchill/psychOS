@@ -138,17 +138,17 @@ void kernel_run_first_program(const int8_t* command) {
     // Initialize terminal for programs to use
     terminal_open(&child_pcb->fa[0], "stdin");
 
-    // Load program and determine entrypoint
-    uint32_t entrypoint = load_program_into_slot(command, child_pcb->slot_num);
-    if(entrypoint == NULL) return;
-
     // Set up this process's PCB
     child_pcb->parent = NULL;
     child_pcb->child = NULL;
     child_pcb->in_use = 1;
     child_pcb->pid = 0;
     open_stdin_and_stdout(child_pcb);
-    parse_args(command, child_pcb->args);
+    parse_command(command, child_pcb->program_name, child_pcb->args);
+
+    // Load program and determine entrypoint
+    uint32_t entrypoint = load_program_into_slot(child_pcb->program_name, child_pcb->slot_num);
+    if(entrypoint == NULL) return;
 
     // Prepare for context switch
     set_kernel_stack(get_kernel_stack_base_from_slot(child_pcb->slot_num));
@@ -212,45 +212,44 @@ uint32_t get_executable_entrypoint(const void *executable) {
 }
 
 /**
- * parse_args
+ * parse_command
  * Given a string containing a program and its arguments, copy the arguments into a buffer.
  * 
  * @param command   Pointer to a string containing a program and its arguments
- * @param buf       Pointer to a buffer to copy arguments to
+ * @param buf_name  Pointer to a buffer to copy program name to (like hello, pingpong, etc)
+ * @param buf_args  Pointer to a buffer to copy arguments to
  *
- * @return          0 if no arguments provided, else the number of bytes copied
+ * @return          The number of bytes copied to buf_args
  */
-int32_t parse_args(const int8_t *command, int8_t *buf) {
+int32_t parse_command(const int8_t *command, int8_t *buf_name, int8_t *buf_args) {
     // Parse args
-    int index = 0;
-    int start = 0;
-    int len = 0;
+    int index      = 0;
+    int len_name   = 0;
+    int len_args   = 0;
+
     int8_t ch;
-    while((ch = command[index++]) != '\0' && index) {
-        // Find the first character after space
-        if (ch == ' ') {
-            while(ch == ' ') {
-                ch = command[index++];
-            }
-            start = index;
+    for (index = 0;   ; index++){
+        ch = command[index];
+        if (ch == ' ' || ch == '\0'){
             break;
         }
     }
+    len_name = index;
 
-    // If there were any args, then get their length and copy
-    if(start > 0) {
-        len = strlen(&command[start]);
-        if(len > MAX_ARGS_LENGTH) {
-            len = MAX_ARGS_LENGTH;
-        }
-        memcpy(buf, &command[start], len);
+    // Copy the program name
+    strncpy(buf_name, command, len_name);
+    buf_name[len_name] = '\0'; // null terminate the string
+    
+    // Find arguments (if any). Copy them into provided buffer.
+    if (ch == ' '){ // then there is more to parse, so grab arguments
+        index++;
+        len_args = strlen(&command[index]);
+        strncpy(buf_args, &command[index], len_args);
     }
+    buf_args[len_args] = '\0'; // null terminate the string
 
-    // Null terminate the string
-    buf[len] = '\0';
-    return len;
+    return len_args;
 }
-
 /**
  * load_program_into_slot
  * Load a program into a given process slot.
