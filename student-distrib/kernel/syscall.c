@@ -109,7 +109,7 @@ int32_t syscall_close(int32_t fd) {
 
     // Check if this fd is valid and if close is defined for it.
     if(!(PCB->fa[fd].flags & FILE_IN_USE)) return -1;
-    if(PCB->fa[fd].fops->close == NULL) return -1;
+    if(PCB->fa[fd].fops == NULL || PCB->fa[fd].fops->close == NULL) return -1;
 
     // Mark the file descriptor as unused
     PCB->fa[fd].flags &= ~(FILE_IN_USE);
@@ -131,6 +131,7 @@ int32_t syscall_close(int32_t fd) {
  */
 int32_t syscall_read(int32_t fd, void *buf, int32_t nbytes) {
     /* Error handling */
+    if (buf == NULL) return -1;
     if(fd < 0 || fd >= MAX_FILE_DESCRIPTORS) return -1;
 
     // get the process control block
@@ -138,7 +139,7 @@ int32_t syscall_read(int32_t fd, void *buf, int32_t nbytes) {
 
     // Check if this fd is valid and if read is defined for it.
     if(!(PCB->fa[fd].flags & FILE_IN_USE)) return -1;
-    if(PCB->fa[fd].fops->read == NULL) return -1;
+    if(PCB->fa[fd].fops == NULL || PCB->fa[fd].fops->read == NULL) return -1;
 
     /* Actually call the read function */
     // Individual file operations should update file positions
@@ -157,6 +158,7 @@ int32_t syscall_read(int32_t fd, void *buf, int32_t nbytes) {
  */
 int32_t syscall_write(int32_t fd, const void *buf, int32_t nbytes) {
     /* Error handling */
+    if (buf == NULL) return -1;
     if(fd < 0 || fd >= MAX_FILE_DESCRIPTORS) return -1;
 
     // get the process control block
@@ -164,7 +166,7 @@ int32_t syscall_write(int32_t fd, const void *buf, int32_t nbytes) {
 
     // Check if this fd is valid and if write is defined for it.
     if(!(PCB->fa[fd].flags & FILE_IN_USE)) return -1;
-    if(PCB->fa[fd].fops->write == NULL) return -1;
+    if(PCB->fa[fd].fops == NULL || PCB->fa[fd].fops->write == NULL) return -1;
 
     /* Actually call the write function */
     // Individual file operations should update file positions
