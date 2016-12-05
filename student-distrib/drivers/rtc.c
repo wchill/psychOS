@@ -13,7 +13,6 @@
     https://courses.engr.illinois.edu/ece391/secure/references/mc146818.pdf  (we didn't really use this, but it is the most detailed reference)
 */
 
-static volatile int rtc_tick_flag = 0;  /* Flag that waits for RTC tick. 1 = waiting for tick. 0 = tick occured */
 static volatile int rtc_test_enabled = 0;
 
 /*
@@ -81,13 +80,21 @@ void rtc_handler() {
 }
 
 void rtc_init() {
-    uint8_t rate = 6;   // Corresponds to 10
+    int     htz = MAX_FREQ;       // hertz
+    uint8_t rate = 14;            // rate passed to the RTC. Rate of 15 corresponds to 2 Hz. We use formula: htz = 32768 >> (rate - 1)
+    char    prev;                 // just a temporary variable
+
+    // Calculate appropriate 'rate' value for the htz we want
+    while (htz != MIN_FREQ){
+        htz >>= 1;                          // divides by 2
+        rate--;
+    }
 
     // set the interrupt rate
     outportb(RTC_STATUS_PORT, RTC_DISABLE_NMI | RTC_REG_A);
-    uint8_t prev = inportb(RTC_DATA_PORT);                      // get initial value of register A
+    prev = inportb(RTC_DATA_PORT);                              // get initial value of register A
     outportb(RTC_STATUS_PORT, RTC_DISABLE_NMI | RTC_REG_A);     // reset index to A
-    outportb(RTC_DATA_PORT, (prev & 0xF0) | rate);              // write only our rate to A. Note, rate is the bottom 4 bits, so keep the top 4 bits. 0xF0 is top 4 bit mask for a char.
+    outportb(RTC_DATA_PORT, (prev & 0xF0) | rate); 
 }
 
 /*
@@ -112,9 +119,10 @@ int32_t rtc_open(file_t *f, const int8_t * filename) {
     
     rtc_init();
 
+    // Set virtualized RTC rate to 2 Hz
     pcb_t *pcb = get_current_pcb();
     pcb->rtc_enabled = 1;
-    pcb->rtc_interval = 1;
+    pcb->rtc_interval = MAX_FREQ / 2;
     pcb->remaining_rtc_ticks = pcb->rtc_interval;
     return 0;
 }
@@ -158,7 +166,7 @@ int32_t rtc_read(file_t *f, void *buf, int32_t nbytes) {
 
     // wait for RTC tick
     while(pcb->remaining_rtc_ticks) {
-        //sm volatile("hlt;");
+        //asm volatile("hlt;");
     }
 
     cli();
