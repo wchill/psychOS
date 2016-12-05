@@ -25,6 +25,7 @@
 #define KEYBOARD_SIZE 128
 
 static pd_entry kernel_pd[NUM_PD_ENTRIES] __attribute__((aligned (FOUR_KB_ALIGNED)));
+static pt_entry kernel_pt[NUM_PD_ENTRIES] __attribute__((aligned (FOUR_KB_ALIGNED)));
 
 /* Check if MAGIC is valid and print the Multiboot information structure
    pointed by ADDR. */
@@ -34,7 +35,7 @@ entry (unsigned long magic, unsigned long addr)
     multiboot_info_t *mbi;
 
     /* Clear the screen. */
-    clear_terminal();
+    clear_terminal(0);
 
     /* Am I booted by a Multiboot-compliant boot loader? */
     if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
@@ -236,7 +237,7 @@ entry (unsigned long magic, unsigned long addr)
     
     printf("Initializing Paging\n");
 
-    initialize_paging_structs(kernel_pd);
+    initialize_paging_structs(kernel_pd, kernel_pt, (void*) VIDEO_PHYS_ADDR);
     enable_paging(kernel_pd);
 
     /* Enable interrupts */

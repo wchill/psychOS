@@ -7,18 +7,32 @@
 #include <lib/lib.h>
 #include <arch/x86/x86_desc.h>
 #include <arch/x86/io.h>
+#include <arch/x86/paging.h>
+#include <arch/x86/task.h>
 
 static volatile uint8_t keyboard_state[KEYBOARD_SIZE] = {0};
 static volatile uint8_t caps_lock_status = 0;
 
-static volatile uint8_t keyboard_buffer_internal[KEYBOARD_BUFFER_SIZE] = {0};
-static volatile circular_buffer_t keyboard_buffer;
-static volatile uint8_t keyboard_new_line_ready = 0;
+static volatile uint8_t input_buffer_internal[NUM_TERMINALS][KEYBOARD_BUFFER_SIZE];
+static volatile circular_buffer_t input_buffer[NUM_TERMINALS];
+static volatile uint8_t new_line_ready[NUM_TERMINALS];
 
-static volatile uint16_t *video_buffer = (volatile uint16_t*) VIDEO_PTR;
-static volatile uint8_t cursor_x = 0;
-static volatile uint8_t cursor_y = 0;
+static volatile uint16_t output_buffer[NUM_TERMINALS][FOUR_KB_ALIGNED];
+static volatile uint8_t cursor_location[NUM_TERMINALS][2];
+
+static volatile uint8_t active_terminal = 0;
+static volatile uint16_t *video_memory = (volatile uint16_t*) VIDEO_VIRT_ADDR;
+
+static volatile uint8_t single_terminal = 1;
  
+static inline uint8_t get_process_terminal() {
+    if(single_terminal) return 0;
+    else {
+        pcb_t *pcb = get_current_pcb();
+        return pcb->terminal_num;
+    }
+}
+
 /*
  * set_hardware_cursor
  * Sets VGA hardware cursor to be at (x, y) (0-indexed).
@@ -26,19 +40,21 @@ static volatile uint8_t cursor_y = 0;
  * @param x   (0-indexed) x coordinate for cursor
  * @param y   (0-indexed) y coordinate for cursor
  */
-static void set_hardware_cursor(uint8_t x, uint8_t y) {
-    cursor_x = x;
-    cursor_y = y;
+static void set_hardware_cursor(uint8_t terminal_num, uint8_t x, uint8_t y) {
+    cursor_location[terminal_num][0] = x;
+    cursor_location[terminal_num][1] = y;
 
-    uint16_t index = VIDEO_INDEX(cursor_x, cursor_y);
+    if(terminal_num == active_terminal) {
+        uint16_t index = VIDEO_INDEX(x, y);
 
-    // Select index 14 in the CRTC register and write upper byte
-    outportb(VGA_CRTC_PORT_COMMAND, 14);
-    outportb(VGA_CRTC_PORT_DATA, index >> 8); // 8 is a bitshift to get rid of lowest 8 bits
+        // Select index 14 in the CRTC register and write upper byte
+        outportb(VGA_CRTC_PORT_COMMAND, 14);
+        outportb(VGA_CRTC_PORT_DATA, index >> 8); // 8 is a bitshift to get rid of lowest 8 bits
 
-    // Select index 15 in the CRTC register and write lower byte
-    outportb(VGA_CRTC_PORT_COMMAND, 15);
-    outportb(VGA_CRTC_PORT_DATA, index & 0xFF);  // 0xFF is a mash to grab lowest 8 bits
+        // Select index 15 in the CRTC register and write lower byte
+        outportb(VGA_CRTC_PORT_COMMAND, 15);
+        outportb(VGA_CRTC_PORT_DATA, index & 0xFF);  // 0xFF is a mash to grab lowest 8 bits
+    }
 }
 
 /*
@@ -52,7 +68,7 @@ static void set_hardware_cursor(uint8_t x, uint8_t y) {
 static inline void video_buffer_putc(uint8_t x, uint8_t y, uint8_t ch) {
     uint16_t word = ch | (TERMINAL_FOREGROUND_COLOR | TERMINAL_BACKGROUND_COLOR); // Bits 0-7 are charcter. Bits 8-15 are color
     uint16_t index = VIDEO_INDEX(x, y);
-    video_buffer[index] = word;
+    video_memory[index] = word;
 }
 
 /*
@@ -61,11 +77,11 @@ static inline void video_buffer_putc(uint8_t x, uint8_t y, uint8_t ch) {
  */
 static void scroll_screen() {
     // Move the last 3840 bytes (79 rows) forward 160 bytes (1 row), overwriting the first row
-    memmove((uint16_t*) &video_buffer[VIDEO_INDEX(0, 0)], (uint16_t*) &video_buffer[VIDEO_INDEX(0, 1)], TERMINAL_COLUMNS * (TERMINAL_ROWS - 1) * 2); // 2 is to double the value
+    memmove((uint16_t*) &video_memory[VIDEO_INDEX(0, 0)], (uint16_t*) &video_memory[VIDEO_INDEX(0, 1)], TERMINAL_COLUMNS * (TERMINAL_ROWS - 1) * 2); // 2 is to double the value
 
     // Set the last row to be blank
     uint16_t blank_word = ' ' | (TERMINAL_FOREGROUND_COLOR | TERMINAL_BACKGROUND_COLOR);
-    memset_word((uint16_t*) &video_buffer[VIDEO_INDEX(0, TERMINAL_ROWS - 1)], blank_word, TERMINAL_COLUMNS);
+    memset_word((uint16_t*) &video_memory[VIDEO_INDEX(0, TERMINAL_ROWS - 1)], blank_word, TERMINAL_COLUMNS);
 }
 
 /*
@@ -76,51 +92,82 @@ static void scroll_screen() {
  *
  * @returns   number of characters echoed to screen (0 or 1)
  */
-static uint8_t keyboard_putc(uint8_t ch) {
+static uint8_t keyboard_putc(uint8_t terminal_num, uint8_t ch) {
     if(ch == '\b') {
     // Backspace
 
         // Check if keyboard circular buffer is empty before erasing anything
-        if (circular_buffer_len((circular_buffer_t*) &keyboard_buffer) == 0) return 0;
+        if (circular_buffer_len((circular_buffer_t*) &input_buffer[terminal_num]) == 0) return 0;
 
         // Check if last byte in buffer is a new line
         uint8_t last_ch;
-        circular_buffer_peek_end_byte((circular_buffer_t*) &keyboard_buffer, &last_ch);
+        circular_buffer_peek_end_byte((circular_buffer_t*) &input_buffer[terminal_num], &last_ch);
         if (last_ch == '\n') return 0;
 
         // Remove last byte in buffer
-        circular_buffer_remove_end_byte((circular_buffer_t*) &keyboard_buffer);
+        circular_buffer_remove_end_byte((circular_buffer_t*) &input_buffer[terminal_num]);
 
-        putc('\b');
+        if(last_ch == '\t') {
+            uint8_t pos = cursor_location[terminal_num][0] - (cursor_location[terminal_num][0] & 4);
+            switch(pos) {
+                case 0:
+                    putc('\b');
+                case 3:
+                    putc('\b');
+                case 2:
+                    putc('\b');
+                case 1:
+                    putc('\b');
+            }
+        } else {
+            putc('\b');
+        }
     } else if(ch == '\n') {
     // New line
 
         // Check if buffer is full
-        if (circular_buffer_len((circular_buffer_t*) &keyboard_buffer) >= KEYBOARD_BUFFER_SIZE) return 0;
+        if (circular_buffer_len((circular_buffer_t*) &input_buffer[terminal_num]) >= KEYBOARD_BUFFER_SIZE) return 0;
 
         // Add new line to buffer
-        circular_buffer_put_byte((circular_buffer_t*) &keyboard_buffer, ch);
+        circular_buffer_put_byte((circular_buffer_t*) &input_buffer[terminal_num], ch);
 
         putc('\n');
 
         // We read a new line
-        keyboard_new_line_ready++;
+        new_line_ready[terminal_num]++;
 
     } else if(ch == '\t') {
-        putc(' ');
-        putc(' ');
-        putc(' ');
-        putc(' ');
-        return 1;
+        // Check if there's space for at least 2 bytes (because we also need new line character)
+        if (circular_buffer_len((circular_buffer_t*) &input_buffer[terminal_num]) < KEYBOARD_BUFFER_SIZE - 1) {
 
+            // Add to buffer
+            circular_buffer_put_byte((circular_buffer_t*) &input_buffer[terminal_num], ch);
+
+            putc(ch);
+        } else {
+            // No space in buffer, ignore key
+            return 0;
+        }
+
+        uint8_t pos = cursor_location[terminal_num][0] & 4;
+        switch(pos) {
+            case 0:
+                putc(' ');
+            case 1:
+                putc(' ');
+            case 2:
+                putc(' ');
+            case 3:
+                putc(' ');
+        }
     } else if(ch > 0) {
     // All other characters considered printable
 
         // Check if there's space for at least 2 bytes (because we also need new line character)
-        if (circular_buffer_len((circular_buffer_t*) &keyboard_buffer) < KEYBOARD_BUFFER_SIZE - 1) {
+        if (circular_buffer_len((circular_buffer_t*) &input_buffer[terminal_num]) < KEYBOARD_BUFFER_SIZE - 1) {
 
             // Add to buffer
-            circular_buffer_put_byte((circular_buffer_t*) &keyboard_buffer, ch);
+            circular_buffer_put_byte((circular_buffer_t*) &input_buffer[terminal_num], ch);
 
             putc(ch);
         } else {
@@ -138,6 +185,11 @@ static uint8_t keyboard_putc(uint8_t ch) {
  * @param ch  The character to output to the screen
  */
 void putc(uint8_t ch) {
+    uint8_t terminal_num = get_process_terminal();
+
+    uint8_t cursor_x = cursor_location[terminal_num][0];
+    uint8_t cursor_y = cursor_location[terminal_num][1];
+
     if(ch == '\b') {
         // Update cursor position
         if(cursor_x == 0) {
@@ -174,21 +226,21 @@ void putc(uint8_t ch) {
             }
         }
     }
-    set_hardware_cursor(cursor_x, cursor_y);
+    set_hardware_cursor(terminal_num, cursor_x, cursor_y);
 }
 
 /*
  * clear_terminal
  * Clears the terminal
  */
-void clear_terminal() {
+void clear_terminal(uint8_t terminal_num) {
 
     // 16-bit word representing space with black background and white foreground
     uint16_t blank_word = ' ' | (TERMINAL_FOREGROUND_COLOR | TERMINAL_BACKGROUND_COLOR);
 
     // Overwrite every byte in video memory with this and reset cursor to (0, 0)
-    memset_word((uint16_t*) video_buffer, blank_word, TERMINAL_COLUMNS * TERMINAL_ROWS);
-    set_hardware_cursor(0, 0);
+    memset_word((uint16_t*) video_memory, blank_word, TERMINAL_COLUMNS * TERMINAL_ROWS);
+    set_hardware_cursor(terminal_num, 0, 0);
 }
 
 /*
@@ -196,6 +248,7 @@ void clear_terminal() {
  * runs when keyboard Interrupt happens. Outputs keys pressed. Can also run tests (Ctrl+1 to Ctrl+5)
  */
 void keyboard_handler() {
+    uint8_t terminal_num = get_process_terminal();
     uint8_t status;
     do {
         // Check keyboard status
@@ -219,9 +272,7 @@ void keyboard_handler() {
                 // Handle special keys, then print if printable
                 uint8_t ctrl_pressed = keyboard_state[KEYBOARD_CTRL];
                 uint8_t alt_pressed = keyboard_state[KEYBOARD_ALT];
-
-                // TODO: handle caps lock differently from shift (symbols should only work with shift, this will require another keymap)
-                uint8_t shift_pressed = keyboard_state[KEYBOARD_LEFT_SHIFT] || keyboard_state[KEYBOARD_RIGHT_SHIFT];;
+                uint8_t shift_pressed = keyboard_state[KEYBOARD_LEFT_SHIFT] || keyboard_state[KEYBOARD_RIGHT_SHIFT];
 
                 int map_index = shift_pressed | (caps_lock_status << 1);
                 uint8_t pressed_char = keyboard_map[map_index][(int) keycode];
@@ -240,9 +291,9 @@ void keyboard_handler() {
                 if(ctrl_pressed && pressed_char == 'l') {
                     int i;
                     uint8_t current_buf[KEYBOARD_BUFFER_SIZE];
-                    uint32_t len = circular_buffer_peek((circular_buffer_t*) &keyboard_buffer, current_buf, KEYBOARD_BUFFER_SIZE);
+                    uint32_t len = circular_buffer_peek((circular_buffer_t*) &input_buffer[terminal_num], current_buf, KEYBOARD_BUFFER_SIZE);
 
-                    clear_terminal();
+                    clear_terminal(terminal_num);
 
                     for(i = 0; i < len; i++) {
                         putc(current_buf[i]);
@@ -256,7 +307,7 @@ void keyboard_handler() {
 
                 // Print to screen
                 if(pressed_char > 0) {
-                    keyboard_putc(pressed_char);
+                    keyboard_putc(terminal_num, pressed_char);
                 }
             }
         }
@@ -264,6 +315,23 @@ void keyboard_handler() {
     
     // Acknowledge interrupt
     send_eoi(KEYBOARD_IRQ);
+}
+
+void multiple_terminal_init() {
+    uint32_t flags;
+    cli_and_save(flags);
+
+    int i;
+    for(i = 0; i < NUM_TERMINALS; i++) {
+        circular_buffer_clear((circular_buffer_t*) &input_buffer[i]);
+        clear_terminal(i);
+        new_line_ready[i] = 0;
+        set_hardware_cursor(i, 0, 0);
+    }
+
+    single_terminal = 0;
+
+    restore_flags(flags);
 }
 
 // Keyboard syscalls
@@ -277,13 +345,14 @@ void keyboard_handler() {
  * @returns         For now, just returns 0.
  */
 int32_t terminal_open(file_t *f, const int8_t *filename) {
-    // TODO: Assign proper file descriptor
+    uint8_t terminal_num = get_process_terminal();
+
     uint32_t flags;
     cli_and_save(flags);
 
     // Clear buffer and screen, then enable keyboard interrupts
-    circular_buffer_init((circular_buffer_t*) &keyboard_buffer, (void*) keyboard_buffer_internal, KEYBOARD_BUFFER_SIZE);
-    clear_terminal(); // Rodney: a situation may arise where we don't want to clear the terminal.
+    circular_buffer_init((circular_buffer_t*) &input_buffer[terminal_num], (void*) input_buffer_internal[terminal_num], KEYBOARD_BUFFER_SIZE);
+    clear_terminal(terminal_num); // Rodney: a situation may arise where we don't want to clear the terminal.
     enable_irq(KEYBOARD_IRQ);
 
     restore_flags(flags);
@@ -299,11 +368,12 @@ int32_t terminal_open(file_t *f, const int8_t *filename) {
  * @returns   For now, just returns 0.
  */
 int32_t terminal_close(file_t *f) {
-    // TODO: handle invalid file descriptor
+    uint8_t terminal_num = get_process_terminal();
+
     uint32_t flags;
     cli_and_save(flags);
 
-    circular_buffer_clear((circular_buffer_t*) &keyboard_buffer);
+    circular_buffer_clear((circular_buffer_t*) &input_buffer[terminal_num]);
     //clear_terminal();
 
     restore_flags(flags);
@@ -322,7 +392,7 @@ int32_t terminal_close(file_t *f) {
  * @returns      The number of bytes actually written.
  */
 int32_t terminal_read(file_t *f, void *buf, int32_t nbytes) {
-    // TODO: Do something with the fd
+    uint8_t terminal_num = get_process_terminal();
 
     uint32_t retval;
     uint32_t max_len;
@@ -335,7 +405,7 @@ int32_t terminal_read(file_t *f, void *buf, int32_t nbytes) {
     sti();
 
     // Wait for Enter key
-    while (!keyboard_new_line_ready) {
+    while (!new_line_ready[terminal_num]) {
         asm volatile("hlt");
     }
 
@@ -343,14 +413,14 @@ int32_t terminal_read(file_t *f, void *buf, int32_t nbytes) {
     cli_and_save(flags);
 
     // Read up to min(nbytes, number of bytes available in buffered line)
-    max_len = circular_buffer_find((circular_buffer_t*) &keyboard_buffer, '\n') + 1;
+    max_len = circular_buffer_find((circular_buffer_t*) &input_buffer[terminal_num], '\n') + 1;
     if(max_len < nbytes){
         nbytes = max_len;
     }
-    retval = circular_buffer_get((circular_buffer_t*) &keyboard_buffer, buf, nbytes);
+    retval = circular_buffer_get((circular_buffer_t*) &input_buffer[terminal_num], buf, nbytes);
 
     // We read one new line
-    keyboard_new_line_ready--;
+    new_line_ready[terminal_num]--;
     
     restore_flags(flags);
     return retval;

@@ -117,7 +117,7 @@ void exception_handler(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
     uint32_t int_num, uint32_t error,
     uint32_t eip, uint32_t cs, uint32_t eflags) {
 
-    clear_terminal();
+    terminal_open(NULL, NULL);
     printf("---------------------------AN EXCEPTION HAS OCCURRED----------------------------\n\n");
     printf(" An exception has occurred: %s (0x%x)\n", interpret_exception(int_num), int_num);
 

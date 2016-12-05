@@ -49,7 +49,7 @@ void list_all_files(){
     int i = 0;
     int j;
 
-    clear_terminal();
+    clear_terminal(0);
 
     // Iterate through the list of files listed in the boot block
     int32_t res = 0;
@@ -89,7 +89,7 @@ void list_all_files(){
  */  
 void read_files_by_name(){
 
-    clear_terminal();
+    clear_terminal(0);
 
     // Read in file entry
     dentry_t dentry;
@@ -128,7 +128,7 @@ void read_files_by_name(){
  */ 
 void read_file_by_index(){
 
-    clear_terminal();
+    clear_terminal(0);
 
     dentry_t dentry;
     int32_t res;

@@ -26,7 +26,7 @@
 typedef struct pcb_t pcb_t;
 
 struct pcb_t {
-	pd_entry process_pd[NUM_PD_ENTRIES] __attribute__((aligned (FOUR_KB_ALIGNED)));
+	pd_entry *process_pd_ptr;
 	struct {
 		uint32_t esp;
 		uint32_t ebp;
@@ -39,12 +39,15 @@ struct pcb_t {
 	pcb_t *parent;
 	pcb_t *child;
 	uint8_t in_use;
+	uint8_t terminal_num;
 };
 
 typedef struct task_kernel_stack_t {
 	pcb_t pcb;
 	uint8_t stack[KERNEL_STACK_SIZE - sizeof(pcb_t)];
 } task_kernel_stack_t;
+
+uint32_t get_next_pid();
 
 void open_stdin_and_stdout();
 void kernel_run_first_program(const int8_t* command);

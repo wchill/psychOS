@@ -5,6 +5,11 @@
 #include <lib/file.h>
 #include <tty/terminal.h>
 
+inline uint32_t get_next_pid() {
+    static uint32_t next_pid = 0;
+    return next_pid++;
+}
+
 /**
  * get_pcb_from_esp
  * Get a process's Process Control Block given its current stack pointer.
@@ -141,8 +146,10 @@ void kernel_run_first_program(const int8_t* command) {
     pcb_t *child_pcb = get_pcb_from_slot(0);
 
     // Process paging
-    setup_process_paging(child_pcb->process_pd, get_process_page_from_slot(child_pcb->slot_num), child_pcb->slot_num);
-    enable_paging(child_pcb->process_pd);
+    // FIXME: multiple terminals
+    void *vmem_ptr = 0xB8000;
+    child_pcb->process_pd_ptr = setup_process_paging(get_process_page_from_slot(child_pcb->slot_num), child_pcb->slot_num, vmem_ptr);
+    enable_paging(child_pcb->process_pd_ptr);
 
     // Initialize terminal for programs to use
     terminal_open(&child_pcb->fa[0], "stdin");
@@ -151,7 +158,7 @@ void kernel_run_first_program(const int8_t* command) {
     child_pcb->parent = NULL;
     child_pcb->child = NULL;
     child_pcb->in_use = 1;
-    child_pcb->pid = 0;
+    child_pcb->pid = get_next_pid();
     open_stdin_and_stdout(child_pcb);
     parse_command(command, child_pcb->program_name, child_pcb->args);
 

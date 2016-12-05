@@ -131,7 +131,13 @@ int32_t syscall_close(int32_t fd) {
  */
 int32_t syscall_read(int32_t fd, void *buf, int32_t nbytes) {
     /* Error handling */
-    if (buf == NULL) return -1;
+    uint32_t target_addr = (uint32_t) buf;
+
+    // Check if pointer is in target page bounds
+    if(!(PROCESS_VIRT_PAGE_START <= target_addr && target_addr < PROCESS_VIRT_PAGE_START + PROCESS_PAGE_SIZE + nbytes)) {
+        return -1;
+    }
+
     if(fd < 0 || fd >= MAX_FILE_DESCRIPTORS) return -1;
 
     // get the process control block
@@ -158,7 +164,13 @@ int32_t syscall_read(int32_t fd, void *buf, int32_t nbytes) {
  */
 int32_t syscall_write(int32_t fd, const void *buf, int32_t nbytes) {
     /* Error handling */
-    if (buf == NULL) return -1;
+    uint32_t target_addr = (uint32_t) buf;
+
+    // Check if pointer is in target page bounds
+    if(!(PROCESS_VIRT_PAGE_START <= target_addr && target_addr < PROCESS_VIRT_PAGE_START + PROCESS_PAGE_SIZE + nbytes)) {
+        return -1;
+    }
+
     if(fd < 0 || fd >= MAX_FILE_DESCRIPTORS) return -1;
 
     // get the process control block
@@ -185,8 +197,6 @@ int32_t syscall_write(int32_t fd, const void *buf, int32_t nbytes) {
  *                  -1 on failure
  */
 int32_t syscall_execute(const int8_t *command) {
-    static uint32_t pid = 1;
-
     pcb_t *parent_pcb = get_current_pcb();
     pcb_t *child_pcb = NULL;
 
@@ -216,12 +226,15 @@ int32_t syscall_execute(const int8_t *command) {
     child_pcb->child = NULL;
     parent_pcb->child = child_pcb;
     child_pcb->in_use = 1;
-    child_pcb->pid = pid++;
+    child_pcb->pid = get_next_pid();
+    child_pcb->terminal_num = parent_pcb->terminal_num;
     open_stdin_and_stdout(child_pcb);
 
     // Set up paging for the new child process
-    setup_process_paging(child_pcb->process_pd, get_process_page_from_slot(child_pcb->slot_num), child_pcb->slot_num);
-    enable_paging(child_pcb->process_pd);
+    // FIXME: multiple terminals
+    void *vmem_ptr = 0xB8000;
+    child_pcb->process_pd_ptr = setup_process_paging(get_process_page_from_slot(child_pcb->slot_num), child_pcb->slot_num, vmem_ptr);
+    enable_paging(child_pcb->process_pd_ptr);
 
     // Prepare for context switch: set the new kernel stack in the TSS and save esp/ebp registers
     set_kernel_stack(get_kernel_stack_base_from_slot(child_pcb->slot_num));
@@ -266,9 +279,9 @@ int32_t syscall_halt(uint32_t status) {
     if(parent_pcb == NULL) {
 
         // Set up a temporary page table to use while restarting process, otherwise machine page faults for some reason
-        static pd_entry temp_pd[NUM_PD_ENTRIES] __attribute__((aligned (FOUR_KB_ALIGNED)));
-        initialize_paging_structs(temp_pd);
-        enable_paging(temp_pd);
+        //static pd_entry temp_pd[NUM_PD_ENTRIES] __attribute__((aligned (FOUR_KB_ALIGNED)));
+        //initialize_paging_structs(temp_pd);
+        //enable_paging(temp_pd);
 
         // We need to call the function that kernel initially calls to load the first shell
         // This will have to be changed later for 3.5, since that function clears all PCBs
@@ -291,7 +304,7 @@ int32_t syscall_halt(uint32_t status) {
     }
 
     // Change the page table and TSS esp0/kernel stack to that of the parent process
-    enable_paging(parent_pcb->process_pd);
+    enable_paging(parent_pcb->process_pd_ptr);
     set_kernel_stack(get_kernel_stack_base_from_slot(parent_pcb->slot_num));
 
     /*
@@ -344,10 +357,13 @@ int32_t syscall_halt(uint32_t status) {
  * @return        
  */
 int32_t syscall_getargs(uint8_t *buf, int32_t nbytes) {
-    if (buf == NULL){
+    uint32_t target_addr = (uint32_t) buf;
+
+    // Check if pointer is in target page bounds
+    if(!(PROCESS_VIRT_PAGE_START <= target_addr && target_addr < PROCESS_VIRT_PAGE_START + PROCESS_PAGE_SIZE + nbytes)) {
         return -1;
     }
-
+    
     pcb_t *child_pcb = get_current_pcb();
     
     // Error check: Make sure buffer is big enough to fit all the arguments.
@@ -366,7 +382,7 @@ int32_t syscall_vidmap(uint8_t **screen_start) {
     uint32_t target_addr = (uint32_t) screen_start;
 
     // Check if pointer is in target page bounds
-    if(!(PROCESS_VIRT_PAGE_START <= target_addr && target_addr < PROCESS_VIRT_PAGE_START + PROCESS_PAGE_SIZE)) {
+    if(!(PROCESS_VIRT_PAGE_START <= target_addr && target_addr < PROCESS_VIRT_PAGE_START + PROCESS_PAGE_SIZE + sizeof(target_addr))) {
         return -1;
     }
 

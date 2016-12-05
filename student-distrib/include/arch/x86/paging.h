@@ -18,6 +18,8 @@
 #define NUM_RESERVED_BITS    3     /* number of bits reserved in PD 4-byte entry                   */
 #define NUM_BITS_ADDR       20     /* number of bits to address Page Table or Page. 
                                       However, we only use the top 10 bits if it's a 4MB Page      */
+#define PAGING_STRUCT_ADDR (FOUR_MB_ALIGNED * 31)
+#define PROCESS_STRUCT_SIZE (FOUR_KB_ALIGNED * 4)
 
 // Taken from lib.c
 #define VIDEO_PHYSICAL_ADDR 0xB8000              /* Physical address of video memory. We think video memory is 4 kb */
@@ -63,8 +65,9 @@ typedef struct __attribute__((packed, aligned(4))) pt_entry {
 } pt_entry;
 
 extern void enable_paging(pd_entry *table_ptr);
-void initialize_paging_structs(pd_entry *local_pd);
-void setup_process_paging(pd_entry *local_pd, void *process_addr, uint32_t slot_num);
+void initialize_paging_structs(pd_entry *local_pd_ptr, pt_entry *local_pt_ptr, void *vmem_addr);
+pd_entry *setup_process_paging(void *process_addr, uint32_t slot_num, void *vmem_addr);
+void set_process_vmem_page(uint32_t slot_num, void *vmem_addr);
 void *get_process_vmem_page(uint32_t process_slot);
 
 #endif

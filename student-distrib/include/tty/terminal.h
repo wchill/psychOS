@@ -18,7 +18,7 @@
 #define TERMINAL_FOREGROUND_COLOR 0x0F00
 #define TERMINAL_BACKGROUND_COLOR 0x0000
 
-#define VIDEO_PTR ((uint8_t*) 0xB8000)
+#define NUM_TERMINALS 3
 
 #define VGA_CRTC_PORT_COMMAND 0x3D4
 #define VGA_CRTC_PORT_DATA 0x3D5
@@ -30,13 +30,16 @@
 #define KEYBOARD_RIGHT_SHIFT 0x36
 #define KEYBOARD_CAPS_LOCK 0x3A
 
+#define VIDEO_VIRT_ADDR 0x8400000
+#define VIDEO_PHYS_ADDR 0xB8000
+
 // Useful macro to get index into a uint16_t array representing video memory
 #define VIDEO_INDEX(x, y) ((y) * TERMINAL_COLUMNS + (x))
 
 void keyboard_handler();
 extern void keyboard_handler_wrapper(void);
 
-void clear_terminal();
+void clear_terminal(uint8_t terminal_num);
 void putc(uint8_t c);
 
 int32_t terminal_open(file_t *f, const int8_t *filename);
