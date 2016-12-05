@@ -65,6 +65,10 @@ struct pcb_t {
 	uint8_t in_use;
 	uint8_t terminal_num;
 
+	uint8_t rtc_enabled;
+	uint32_t rtc_interval;
+	uint32_t remaining_rtc_ticks;
+
 	// Current process state
 	uint32_t status;
 };

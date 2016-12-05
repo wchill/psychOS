@@ -17,7 +17,7 @@ static volatile uint8_t input_buffer_internal[NUM_TERMINALS][KEYBOARD_BUFFER_SIZ
 static volatile circular_buffer_t input_buffer[NUM_TERMINALS];
 static volatile uint8_t new_line_ready[NUM_TERMINALS];
 
-static volatile uint16_t output_buffer[NUM_TERMINALS][FOUR_KB_ALIGNED];
+static volatile uint16_t output_buffer[NUM_TERMINALS][FOUR_KB_ALIGNED] __attribute__((aligned (FOUR_KB_ALIGNED)));
 static volatile uint8_t cursor_location[NUM_TERMINALS][2];
 
 static volatile uint8_t active_terminal = 0;
@@ -70,7 +70,7 @@ void switch_active_terminal(uint8_t new_terminal) {
         uint32_t flags;
         cli_and_save(flags);
 
-        memcpy((void*) output_buffer[active_terminal], (void*) VIDEO_PHYS_ADDR, 4000);
+        memcpy((void*) output_buffer[active_terminal], (void*) VIDEO_PHYS_ADDR, 4096);
 
         uint8_t old_terminal = active_terminal;
         active_terminal = new_terminal;
@@ -81,7 +81,7 @@ void switch_active_terminal(uint8_t new_terminal) {
 
         flush_tlb();
 
-        memcpy((void*) VIDEO_PHYS_ADDR, (void*) output_buffer[active_terminal], 4000);
+        memcpy((void*) VIDEO_PHYS_ADDR, (void*) output_buffer[active_terminal], 4096);
         set_hardware_cursor(active_terminal, cursor_location[active_terminal][0], cursor_location[active_terminal][1]);
 
         restore_flags(flags);

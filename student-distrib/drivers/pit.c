@@ -11,11 +11,9 @@
 static volatile uint32_t system_ticks = 0;
 
 static void context_switch(pcb_t *last_pcb, pcb_t *pcb) {
-
 	cli();
 
 	set_process_vmem_page(pcb->slot_num, get_terminal_output_buffer(pcb->terminal_num));
-	//switch_process_terminal(pcb->terminal_num);
 	enable_paging(pcb->process_pd_ptr);
 
 	asm volatile(
@@ -25,6 +23,7 @@ static void context_switch(pcb_t *last_pcb, pcb_t *pcb) {
 		: 
 		: "memory"
 	);
+
 	// Prepare for context switch
 	set_kernel_stack(get_kernel_stack_base_from_slot(pcb->slot_num));
 
@@ -77,9 +76,5 @@ void pit_init(uint32_t hertz) {
 
 void pit_handler() {
 	system_ticks++;
-	//if(system_ticks > 32) {
-		scheduler();
-	//} else {
-	//	send_eoi(PIT_IRQ);
-	//}
+	scheduler();
 }

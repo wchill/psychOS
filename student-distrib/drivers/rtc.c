@@ -4,6 +4,7 @@
 #include <arch/x86/io.h>
 #include <arch/x86/x86_desc.h>
 #include <arch/x86/interrupt.h>
+#include <arch/x86/task.h>
 #include <types.h>
 
 /* References:
@@ -54,6 +55,10 @@ void set_rtc_test_enabled(int enabled) {
  *   SIDE EFFECTS: makes screen flash when it tests interrupts.
  */  
 void rtc_handler() {
+    uint32_t flags;
+
+    cli_and_save(flags);
+
     outportb(RTC_STATUS_PORT, RTC_REG_C);
     inportb(RTC_DATA_PORT);
 
@@ -62,20 +67,38 @@ void rtc_handler() {
         test_rtc();     
     }
 
-    rtc_tick_flag = 0; // Rodney: newly added for 3.2
+    //rtc_tick_flag = 0; // Rodney: newly added for 3.2
+    int i;
+    for(i = 0; i < MAX_PROCESSES; i++) {
+        pcb_t *pcb = get_pcb_from_slot(i);
+        if(pcb->in_use && pcb->rtc_enabled && pcb->remaining_rtc_ticks > 0) {
+            pcb->remaining_rtc_ticks--;
+        }
+    }
     
     send_eoi(RTC_IRQ);
+    restore_flags(flags);
+}
+
+void rtc_init() {
+    uint8_t rate = 6;   // Corresponds to 10
+
+    // set the interrupt rate
+    outportb(RTC_STATUS_PORT, RTC_DISABLE_NMI | RTC_REG_A);
+    uint8_t prev = inportb(RTC_DATA_PORT);                      // get initial value of register A
+    outportb(RTC_STATUS_PORT, RTC_DISABLE_NMI | RTC_REG_A);     // reset index to A
+    outportb(RTC_DATA_PORT, (prev & 0xF0) | rate);              // write only our rate to A. Note, rate is the bottom 4 bits, so keep the top 4 bits. 0xF0 is top 4 bit mask for a char.
 }
 
 /*
  * rtc_open
- *   DESCRIPTION:  Initializes the RTC with a frequency of 2 Hz (TA Rohan's suggestion)
+ *   DESCRIPTION:  Initializes the RTC with a frequency of 1024 Hz
  *   INPUTS:       f - file struct representing an RTC
  *                 filename - name of RTC file
  *   OUTPUTS:      none
  *   RETURN VALUE: -1 on failure
  *                  0 on success (for now we are always succesful)
- *   SIDE EFFECTS: changes the frequency of the RTC to 2 Hz
+ *   SIDE EFFECTS: changes the frequency of the RTC to 1024 Hz, installs a handler
  */ 
 int32_t rtc_open(file_t *f, const int8_t * filename) {
     outportb(RTC_STATUS_PORT, RTC_DISABLE_NMI | RTC_REG_B);     // select register B, and disable NMI
@@ -87,24 +110,28 @@ int32_t rtc_open(file_t *f, const int8_t * filename) {
     install_interrupt_handler(IRQ_INT_NUM(RTC_IRQ), rtc_handler_wrapper, KERNEL_CS, PRIVILEGE_KERNEL);
     enable_irq(RTC_IRQ);
     
-    uint32_t htz = MIN_FREQ;
-    rtc_write(f, &htz, 4);
+    rtc_init();
 
+    pcb_t *pcb = get_current_pcb();
+    pcb->rtc_enabled = 1;
+    pcb->rtc_interval = 1;
+    pcb->remaining_rtc_ticks = pcb->rtc_interval;
     return 0;
 }
 
 /*
  * rtc_close
- *   DESCRIPTION:  Sets RTC to frequency of 2 Hz. We keep RTC interrupts on as suggested on p.16 of MP3 spec.
+ *   DESCRIPTION:  Disables the virtualized RTC for this process
  *   INPUTS:       none
  *   OUTPUTS:      none
  *   RETURN VALUE: -1 on failure
  *                  0 on success
- *   SIDE EFFECTS: changes the frequency of the RTC to 2 Hz
+ *   SIDE EFFECTS: Disables RTC interrupts for this process only
  */ 
 int32_t rtc_close(file_t *f) {
-    uint32_t htz = MIN_FREQ;
-    return rtc_write(f, &htz, 4);
+    pcb_t *pcb = get_current_pcb();
+    pcb->rtc_enabled = 0;
+    return 0;
 }
 
 /*
@@ -118,6 +145,8 @@ int32_t rtc_close(file_t *f) {
  *   SIDE EFFECTS: none
  */ 
 int32_t rtc_read(file_t *f, void *buf, int32_t nbytes) {
+    pcb_t *pcb = get_current_pcb();
+    if(pcb->rtc_enabled == 0) return -1;
 
     uint32_t flags;
 
@@ -127,8 +156,13 @@ int32_t rtc_read(file_t *f, void *buf, int32_t nbytes) {
     cli_and_save(flags);
     sti();
 
-    rtc_tick_flag = 1;          // set flag to wait for RTC tick
-    while(rtc_tick_flag);       // wait for RTC tick
+    // wait for RTC tick
+    while(pcb->remaining_rtc_ticks) {
+        //sm volatile("hlt;");
+    }
+
+    cli();
+    pcb->remaining_rtc_ticks = pcb->rtc_interval;
 
     restore_flags(flags);
     return 0;                   // acknowledge RTC tick
@@ -146,17 +180,31 @@ int32_t rtc_read(file_t *f, void *buf, int32_t nbytes) {
  *   SIDE EFFECTS: changes the frequency of the RTC
  */ 
 int32_t rtc_write(file_t *f, const void *buf, int32_t nbytes) {
+
+    uint32_t hertz = *((uint32_t*) buf);
+
+    if(hertz < MIN_FREQ || hertz > MAX_FREQ) 
+        return -1;
+
+    // Check for power of 2
+    if((hertz & (hertz-1)) != 0)
+        return -1;   
+
+    pcb_t *pcb = get_current_pcb();
+    pcb->rtc_interval = MAX_FREQ / hertz;
+
+    /*
     int     htz = *((uint32_t*) buf);       // hertz
     uint8_t rate = 15;                      // rate passed to the RTC. Rate of 15 corresponds to 2 Hz. We use formula: htz = 32768 >> (rate - 1)
     char    prev;                           // just a temporary variable
 
-    /* Check for valid input */
+    // Check for valid input
     if( htz < MIN_FREQ || htz > MAX_FREQ ) 
         return -1;
     if( (htz & (htz-1)) != 0)               // fancy & efficient way to check if htz is a power of 2
         return -1;          
 
-    /* Calculate appropriate 'rate' value for the htz we want */
+    // Calculate appropriate 'rate' value for the htz we want
     while (htz != MIN_FREQ){
         htz >>= 1;                          // divides by 2
         rate--;
@@ -167,6 +215,7 @@ int32_t rtc_write(file_t *f, const void *buf, int32_t nbytes) {
     prev = inportb(RTC_DATA_PORT);                              // get initial value of register A
     outportb(RTC_STATUS_PORT, RTC_DISABLE_NMI | RTC_REG_A);     // reset index to A
     outportb(RTC_DATA_PORT, (prev & 0xF0) | rate);              // write only our rate to A. Note, rate is the bottom 4 bits, so keep the top 4 bits. 0xF0 is top 4 bit mask for a char.
+    */
 
     return 0;
 }
