@@ -20,6 +20,8 @@ syscall_jump_table:
 	.long syscall_sigreturn
 
 .text
+
+# Simply calls 1 of the 10 system calls defined above, using a jump table.
 .globl syscall_handler_wrapper
 syscall_handler_wrapper:
 	# On the stack when this is called:
@@ -43,7 +45,7 @@ syscall_handler_wrapper:
 	push %ebx
 	cld
 	# Jump to correct syscall function using above jump table
-	call *syscall_jump_table(, %eax, 4)
+	call *syscall_jump_table(, %eax, 4) # 4 represents size of a "long" in bytes
 	pop %ebx
 	pop %ecx
 	pop %edx

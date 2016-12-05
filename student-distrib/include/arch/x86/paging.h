@@ -18,8 +18,9 @@
 #define NUM_RESERVED_BITS    3     /* number of bits reserved in PD 4-byte entry                   */
 #define NUM_BITS_ADDR       20     /* number of bits to address Page Table or Page. 
                                       However, we only use the top 10 bits if it's a 4MB Page      */
-#define PAGING_STRUCT_ADDR (FOUR_MB_ALIGNED * 31)
-#define PROCESS_STRUCT_SIZE (FOUR_KB_ALIGNED * 4)
+
+#define PAGING_STRUCT_ADDR (FOUR_MB_ALIGNED * 31)  /* We store paging structs at 124 MB            */
+#define PROCESS_STRUCT_SIZE (FOUR_KB_ALIGNED * 4)  /* Our Process structs are 16 KB                */
 
 // Taken from lib.c
 #define VIDEO_PHYSICAL_ADDR 0xB8000              /* Physical address of video memory. We think video memory is 4 kb */

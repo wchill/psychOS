@@ -1,5 +1,3 @@
-// Reference: c
-
 #include <arch/x86/interrupt.h>
 #include <lib/lib.h>
 #include <tty/terminal.h>

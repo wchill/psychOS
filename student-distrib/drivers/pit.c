@@ -7,6 +7,13 @@
 
 static volatile uint32_t system_ticks = 0;
 
+/**
+ * context_switch
+ * Saves the current process's state and loads another process for execution.
+ *
+ * @param last_pcb 	A pointer to the PCB of the process being swapped out
+ * @param pcb 		A pointer to the PCB of the process being run
+ */
 static void context_switch(pcb_t *last_pcb, pcb_t *pcb) {
 	cli();
 
@@ -41,6 +48,10 @@ static void context_switch(pcb_t *last_pcb, pcb_t *pcb) {
 	);
 }
 
+/**
+ * scheduler
+ * Finds a process that should next be run and preempts the current process if one is available.
+ */
 void scheduler() {
 	int i;
 
@@ -60,17 +71,31 @@ void scheduler() {
 	// Unable to find a suitable process to switch to, exit
 }
 
+/**
+ * pit_init
+ * Initializes the PIT so it can be used for preemptive multitasking.
+ *
+ * @param hertz 	The rate that the PIT should be run at (currently ignored)
+ */
 void pit_init(uint32_t hertz) {
 	// 100 Hz = 10ms per tick/context switch
+	// For now, we ignore the given parameter
 	hertz = 100;
 
 	uint16_t divisor = PIT_FREQUENCY / hertz;
 
+	// Put the PIT into binary counting mode, square wave generator, 16-bit receiving mode for the divisor, and use channel 0
 	outportb(PIT_CMD_REG_PORT, PIT_BINARY_VAL | PIT_CMD_MODE3 | PIT_CMD_RW_BOTH | PIT_CMD_COUNTER0);
-	outportb(PIT_CH0_DATA_PORT, (uint8_t) (divisor & 0xFF));
-	outportb(PIT_CH0_DATA_PORT, (uint8_t) ((divisor >> 8) & 0xFF));
+
+	// Send the clock divisor
+	outportb(PIT_CH0_DATA_PORT, (uint8_t) (divisor & LOW_EIGHT_BIT_BITMASK));
+	outportb(PIT_CH0_DATA_PORT, (uint8_t) ((divisor >> 8) & LOW_EIGHT_BIT_BITMASK)); // 8 represents shifting to get bits 8-15 into bits 0-7, to apply bitmask.
 }
 
+/**
+ * pit_handler
+ * Interrupt handler for the PIT - just increments the number of ticks that have passed and runs the scheduler.
+ */
 void pit_handler() {
 	system_ticks++;
 	scheduler();

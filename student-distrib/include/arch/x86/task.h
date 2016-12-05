@@ -29,6 +29,7 @@
 
 typedef struct pcb_t pcb_t;
 
+/* This is our PCB that each process will have (called process descriptor in lecture) */
 struct pcb_t {
 	// Linked list of processes
 	pcb_t *parent;
@@ -66,13 +67,14 @@ struct pcb_t {
 	uint8_t terminal_num;
 
 	uint8_t rtc_enabled;
-	uint32_t rtc_interval;
-	uint32_t remaining_rtc_ticks;
+	uint32_t rtc_interval;         // How many ticks a process has to wait before "RTC read" returns. So 1024 Hz means rtc_interval 1. 512 Hz means rtc_interval 2
+	uint32_t remaining_rtc_ticks;  // Ticks left until the interrupt should fire again.
 
 	// Current process state
 	uint32_t status;
 };
 
+/* Kernel Task Structure. We did not use this in the code yet */
 typedef struct task_kernel_stack_t {
 	pcb_t pcb;
 	uint8_t stack[KERNEL_STACK_SIZE - sizeof(pcb_t)];

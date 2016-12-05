@@ -14,9 +14,11 @@ static pt_entry *get_process_pt(uint32_t slot_num) {
 /**
  * initialize_paging_structs
  * Initializes paging structures by doing:
- *    1) set up video memory
- *    2) set up Kernel page
- *    3) set up program pages for the processes
+ *    1) Set up 0-4 MB memory, including video memory
+ *    2) set up 4-8 MB Kernel page (mapped directly from video memory)
+ *    3) Set up pages for storing page directories/page structs (at 124-128 MB)
+ *    4) set up program pages for the processes (at 128-132 MB)
+ *    5) set up process VMEM page (at 132 MB). All processes have the same VMEM page.
  *    everything else is set to blank
  * 
  * @param local_pd_ptr  pointer to a Page Directory entry. We want it to be the 0th PD entry.
@@ -219,6 +221,13 @@ void flush_tlb() {
     );
 }
 
+/**
+ * set_process_vmem_page
+ * Updates the process's page tables to point to virtual memory.
+ * 
+ * @param slot_num  number of the process. Between 0 and (MAX_PROCESSES-1). Used to find process's page tables.
+ * @param vmem_addr address of video memory that will be saved by the process's page table.
+ */
 void set_process_vmem_page(uint32_t slot_num, void *vmem_addr) {
     pt_entry *local_pt = get_process_pt(slot_num);
     local_pt[0].physical_addr_31_to_12 = (uint32_t) vmem_addr >> ADDRESS_SHIFT;
@@ -226,7 +235,13 @@ void set_process_vmem_page(uint32_t slot_num, void *vmem_addr) {
     flush_tlb();
 }
 
+/**
+ * get_process_vmem_page
+ * Returns a static virtual memory address (132 MB) which is where our process VMEM (video memory) page is located
+ *
+ * @param process_slot  The number of the process to return the VMEM page for. Between 0 and (MAX_PROCESSES-1). This number is discarded though.
+ */
 void *get_process_vmem_page(uint32_t process_slot) {
     // Always 132MB
-    return (void*) (33 * FOUR_MB_ALIGNED);
+    return (void*) (33 * FOUR_MB_ALIGNED); // 33 Represents the PD entry that will correspond to 132 MB, which is where the Process VMEM page is located.
 }

@@ -34,7 +34,7 @@ static file_ops rtc_fops = {
 };
 
 // Store pointers to above fops structs
-static file_ops *fops_table[3] = {&rtc_fops, &dir_fops, &file_fops};
+static file_ops *fops_table[3] = {&rtc_fops, &dir_fops, &file_fops}; // 3 represents File, Directory, RTC
 
 /**
  * syscall_open
@@ -338,7 +338,7 @@ int32_t syscall_halt(uint32_t status) {
         "leave\r\n"
         "ret\r\n"
         :
-        : "r"(parent_pcb->regs.esp), "r"(parent_pcb->regs.ebp), "r"(status & 0x000000FF)
+        : "r"(parent_pcb->regs.esp), "r"(parent_pcb->regs.ebp), "r"(status & 0xFF)
         : "memory", "cc"
     );
 
@@ -376,6 +376,12 @@ int32_t syscall_getargs(uint8_t *buf, int32_t nbytes) {
     return 0;
 }
 
+/**
+ * syscall_vidmap
+ * Get a pointer to a process's user-accessible video memory.
+ * 
+ * @param screen_start  pointer to a variable which will hold the pointer to video memory
+ */
 int32_t syscall_vidmap(uint8_t **screen_start) {
     pcb_t *pcb = get_current_pcb();
     uint32_t target_addr = (uint32_t) screen_start;

@@ -34,6 +34,8 @@
 #define VIDEO_VIRT_ADDR 0x8400000
 #define VIDEO_PHYS_ADDR 0xB8000
 
+#define SPACES_IN_TAB 4
+
 // Useful macro to get index into a uint16_t array representing video memory
 #define VIDEO_INDEX(x, y) ((y) * TERMINAL_COLUMNS + (x))
 

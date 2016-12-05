@@ -18,13 +18,19 @@ static volatile circular_buffer_t input_buffer[NUM_TERMINALS];
 static volatile uint8_t new_line_ready[NUM_TERMINALS];
 
 static volatile uint16_t output_buffer[NUM_TERMINALS][FOUR_KB_ALIGNED] __attribute__((aligned (FOUR_KB_ALIGNED)));
-static volatile uint8_t cursor_location[NUM_TERMINALS][2];
+static volatile uint8_t cursor_location[NUM_TERMINALS][2]; // 2 represents the 2 dimensional (x,y) coordinates we have.
 
 static volatile uint8_t active_terminal = 0;
 static volatile uint16_t *video_memory[NUM_TERMINALS] = {(volatile uint16_t*) VIDEO_VIRT_ADDR};
 
 static volatile uint8_t single_terminal = 1;
  
+/** 
+ * get_process_terminal
+ * Returns the terminal that the current process is running on. (Always 0 if only 1 process is running)
+ *
+ * @return  The number terminal (0-2) that current process is running on.
+ */
 static inline uint8_t get_process_terminal() {
     if(single_terminal) return 0;
     else {
@@ -33,6 +39,14 @@ static inline uint8_t get_process_terminal() {
     }
 }
 
+/**
+ * get_terminal_output_buffer
+ * Given a terminal number, returns the output buffer for that terminal (or vmem directly if on active terminal) 
+ * 
+ * @param terminal_num  The terminal number to get the output buffer for
+ *
+ * @return a pointer to video memory, or to an output buffer.
+ */
 inline uint16_t *get_terminal_output_buffer(uint8_t terminal_num) {
     if(terminal_num == active_terminal) {
         return (uint16_t*) VIDEO_PHYS_ADDR;
@@ -41,7 +55,7 @@ inline uint16_t *get_terminal_output_buffer(uint8_t terminal_num) {
     }
 }
 
-/*
+/**
  * set_hardware_cursor
  * Sets VGA hardware cursor to be at (x, y) (0-indexed).
  * 
@@ -65,23 +79,28 @@ static void set_hardware_cursor(uint8_t terminal_num, uint8_t x, uint8_t y) {
     }
 }
 
+/**
+ * switch_active_terminal
+ * Switches terminals and does necessary bookkepping (copying buffers, flushing tlb, etc.)
+ *
+ * @param new_terminal The new terminal to switch to.
+ */
 void switch_active_terminal(uint8_t new_terminal) {
     if(new_terminal < NUM_TERMINALS) {
         uint32_t flags;
         cli_and_save(flags);
 
-        memcpy((void*) output_buffer[active_terminal], (void*) VIDEO_PHYS_ADDR, 4096);
+        memcpy((void*) output_buffer[active_terminal], (void*) VIDEO_PHYS_ADDR, FOUR_KB_ALIGNED);
 
         uint8_t old_terminal = active_terminal;
         active_terminal = new_terminal;
-        //pcb_t *pcb = get_current_pcb();
-        //set_process_vmem_page(pcb->slot_num, get_terminal_output_buffer(pcb->terminal_num));
+
         video_memory[old_terminal] = get_terminal_output_buffer(old_terminal);
         video_memory[new_terminal] = get_terminal_output_buffer(new_terminal);
 
         flush_tlb();
 
-        memcpy((void*) VIDEO_PHYS_ADDR, (void*) output_buffer[active_terminal], 4096);
+        memcpy((void*) VIDEO_PHYS_ADDR, (void*) output_buffer[active_terminal], FOUR_KB_ALIGNED);
         set_hardware_cursor(active_terminal, cursor_location[active_terminal][0], cursor_location[active_terminal][1]);
 
         restore_flags(flags);
@@ -140,15 +159,15 @@ static uint8_t keyboard_putc(uint8_t terminal_num, uint8_t ch) {
         circular_buffer_remove_end_byte((circular_buffer_t*) &input_buffer[terminal_num]);
 
         if(last_ch == '\t') {
-            uint8_t pos = cursor_location[terminal_num][0] - (cursor_location[terminal_num][0] & 4);
+            uint8_t pos = cursor_location[terminal_num][0] - (cursor_location[terminal_num][0] & SPACES_IN_TAB);
             switch(pos) {
                 case 0:
                     putc_internal(terminal_num, '\b');
-                case 3:
+                case 3: // 3 represents 3 backspaces needed before tab, to align tab properly on divisible by 4 boundaries.
                     putc_internal(terminal_num, '\b');
-                case 2:
+                case 2: // 2 represents 3 backspaces needed before tab, to align tab properly on divisible by 4 boundaries.
                     putc_internal(terminal_num, '\b');
-                case 1:
+                case 1: 
                     putc_internal(terminal_num, '\b');
             }
         } else {
@@ -175,15 +194,17 @@ static uint8_t keyboard_putc(uint8_t terminal_num, uint8_t ch) {
             // Add to buffer
             circular_buffer_put_byte((circular_buffer_t*) &input_buffer[terminal_num], ch);
 
-            uint8_t pos = cursor_location[terminal_num][0] & 4;
+            uint8_t pos = cursor_location[terminal_num][0] & SPACES_IN_TAB;
+
+            // Our switch-case code purposely falls through
             switch(pos) {
                 case 0:
                     putc_internal(terminal_num, ' ');
                 case 1:
                     putc_internal(terminal_num, ' ');
-                case 2:
+                case 2: // 2 represents number of spaces past a 4-space boundary. (So in this case we only need to add 2 more spaces to reach 4.)
                     putc_internal(terminal_num, ' ');
-                case 3:
+                case 3: // 3 represents number of spaces past a 4-space boundary. (So in this case we only need to add 1 more space to reach 4.)
                     putc_internal(terminal_num, ' ');
             }
         } else {
@@ -258,6 +279,12 @@ void putc_internal(uint8_t terminal_num, uint8_t ch) {
     set_hardware_cursor(terminal_num, cursor_x, cursor_y);
 }
 
+/**
+ * putc
+ * Outputs a character to terminal 0.
+ *
+ * @param ch  the character to output.
+ */
 void putc(uint8_t ch) {
     putc_internal(0, ch);
 }
@@ -358,6 +385,12 @@ void keyboard_handler() {
     restore_flags(flags);
 }
 
+/**
+ * reset_terminal
+ * Resets the terminal (screen clears, cursor goes in top left, and other bookkeeping done)
+ *
+ * @terminal_num  The number of the terminal to reset to reset
+ */
 void reset_terminal(uint8_t terminal_num) {
     uint32_t flags;
     cli_and_save(flags);
@@ -370,6 +403,10 @@ void reset_terminal(uint8_t terminal_num) {
     restore_flags(flags);
 }
 
+/**
+ * multiple_terminal_init
+ * Initializes all 3 terminals.
+ */
 void multiple_terminal_init() {
     uint32_t flags;
     cli_and_save(flags);
