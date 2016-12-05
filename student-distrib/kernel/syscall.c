@@ -5,6 +5,7 @@
 #include <lib/file.h>
 #include <lib/lib.h>
 #include <drivers/rtc.h>
+#include <tty/terminal.h>
 
 #define RTC_FT 0
 #define DIRECTORY_FT 1
@@ -251,6 +252,8 @@ int32_t syscall_execute(const int8_t *command) {
     // Switch to user mode
     switch_to_ring_3(PROCESS_LINK_START, child_pcb->entrypoint);
 
+    asm volatile("execute_lbl:");
+
     // We'll never come back here (read syscall_halt comments for complete reason)
     return -1;
 }
@@ -278,31 +281,21 @@ int32_t syscall_halt(uint32_t status) {
     pcb_t *parent_pcb = child_pcb->parent;
 
     // If this process does not have a parent, then it should be restarted
-    if(parent_pcb == NULL) {
+    if(parent_pcb == NULL) { 
+        reset_terminal(child_pcb->terminal_num);
 
-        // Set up a temporary page table to use while restarting process, otherwise machine page faults for some reason
-        //static pd_entry temp_pd[NUM_PD_ENTRIES] __attribute__((aligned (FOUR_KB_ALIGNED)));
-        //initialize_paging_structs(temp_pd);
-        //enable_paging(temp_pd);
+        // Set up this process's PCB
+        child_pcb->parent = NULL;
+        child_pcb->child = NULL;
+        child_pcb->in_use = 1;
+        child_pcb->pid = get_next_pid();
+        open_stdin_and_stdout(child_pcb);
 
-        // We need to call the function that kernel initially calls to load the first shell
-        // This will have to be changed later for 3.5, since that function clears all PCBs
-        // Have to be careful though: declaring the command string static means that it
-        // shouldn't be touched by any code doing stack operations
-        void *current_kernel_stack_base = get_current_kernel_stack_base();
-        static const int8_t cmd[] = "shell\0";
+        // Prepare for context switch
+        set_kernel_stack(get_kernel_stack_base_from_slot(child_pcb->slot_num));
 
-        // We need to stack pivot (?) hence assembly
-        // Push the parameter, push a return address that is never used, jump to function
-        asm volatile(
-            "mov %0, %%esp\r\n"
-            "push %1\r\n"
-            "push $0\r\n"
-            "jmp *%2\r\n"
-            :
-            : "r"(current_kernel_stack_base), "r"(cmd), "r"(kernel_run_first_program)
-            : "memory"
-        );
+        // Start the program
+        switch_to_ring_3(PROCESS_LINK_START, child_pcb->entrypoint);
     }
 
     // Change the page table and TSS esp0/kernel stack to that of the parent process

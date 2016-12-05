@@ -39,6 +39,9 @@
 void keyboard_handler();
 extern void keyboard_handler_wrapper(void);
 
+void reset_terminal(uint8_t terminal_num);
+void multiple_terminal_init();
+
 void clear_terminal(uint8_t terminal_num);
 void putc(uint8_t c);
 

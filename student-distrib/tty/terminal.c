@@ -317,19 +317,29 @@ void keyboard_handler() {
     send_eoi(KEYBOARD_IRQ);
 }
 
+void reset_terminal(uint8_t terminal_num) {
+    uint32_t flags;
+    cli_and_save(flags);
+
+    circular_buffer_init((circular_buffer_t*) &input_buffer[terminal_num], (void*) input_buffer_internal[terminal_num], KEYBOARD_BUFFER_SIZE);
+    clear_terminal(terminal_num);
+    new_line_ready[terminal_num] = 0;
+    set_hardware_cursor(terminal_num, 0, 0);
+
+    restore_flags(flags);
+}
+
 void multiple_terminal_init() {
     uint32_t flags;
     cli_and_save(flags);
 
     int i;
     for(i = 0; i < NUM_TERMINALS; i++) {
-        circular_buffer_clear((circular_buffer_t*) &input_buffer[i]);
-        clear_terminal(i);
-        new_line_ready[i] = 0;
-        set_hardware_cursor(i, 0, 0);
+        reset_terminal(i);
     }
 
     single_terminal = 0;
+    enable_irq(KEYBOARD_IRQ);
 
     restore_flags(flags);
 }
@@ -409,8 +419,7 @@ int32_t terminal_read(file_t *f, void *buf, int32_t nbytes) {
         asm volatile("hlt");
     }
 
-    restore_flags(flags);
-    cli_and_save(flags);
+    cli();
 
     // Read up to min(nbytes, number of bytes available in buffered line)
     max_len = circular_buffer_find((circular_buffer_t*) &input_buffer[terminal_num], '\n') + 1;
