@@ -33,6 +33,21 @@ static inline uint8_t get_process_terminal() {
     }
 }
 
+inline uint16_t *get_terminal_output_buffer(uint8_t terminal_num) {
+    if(terminal_num == active_terminal) {
+        return (uint16_t*) VIDEO_PHYS_ADDR;
+    } else {
+        return (uint16_t*) output_buffer[terminal_num];
+    }
+}
+
+// Warning: Disable interrupts while running this!
+void switch_active_terminal(uint8_t new_terminal) {
+    if(new_terminal >= 0 && new_terminal < NUM_TERMINALS) {
+        active_terminal = new_terminal;
+    }
+}
+
 /*
  * set_hardware_cursor
  * Sets VGA hardware cursor to be at (x, y) (0-indexed).
@@ -248,7 +263,7 @@ void clear_terminal(uint8_t terminal_num) {
  * runs when keyboard Interrupt happens. Outputs keys pressed. Can also run tests (Ctrl+1 to Ctrl+5)
  */
 void keyboard_handler() {
-    uint8_t terminal_num = get_process_terminal();
+    uint8_t terminal_num = active_terminal;
     uint8_t status;
     do {
         // Check keyboard status
@@ -285,6 +300,21 @@ void keyboard_handler() {
                 // Run test suite for Ctrl+1 to Ctrl+5
                 if (ctrl_pressed && pressed_char >= '1' && pressed_char <= '5'){
                     test_suite(pressed_char - '0');
+                }
+
+                if (alt_pressed && keycode >= KEYBOARD_F1 && keycode < KEYBOARD_F1 + NUM_TERMINALS) {
+                    uint32_t flags;
+                    cli_and_save(flags);
+
+                    memcpy((void*) output_buffer[active_terminal], (void*) VIDEO_PHYS_ADDR, 4000);
+
+                    switch_active_terminal(keycode - KEYBOARD_F1);
+                    pcb_t *pcb = get_current_pcb();
+                    set_process_vmem_page(pcb->slot_num, get_terminal_output_buffer(active_terminal));
+
+                    memcpy((void*) VIDEO_PHYS_ADDR, (void*) output_buffer[active_terminal], 4000);
+
+                    restore_flags(flags);
                 }
 
                 // Ctrl+L should clear the screen and place cursor at the top, but not clear the buffer
@@ -337,6 +367,21 @@ void multiple_terminal_init() {
     for(i = 0; i < NUM_TERMINALS; i++) {
         reset_terminal(i);
     }
+
+    // 16-bit word representing space with black background and white foreground
+    uint16_t two = '2' | (TERMINAL_FOREGROUND_COLOR | TERMINAL_BACKGROUND_COLOR);
+
+    // Overwrite every byte in video memory with this and reset cursor to (0, 0)
+    memset_word((uint16_t*) output_buffer[1], two, TERMINAL_COLUMNS * TERMINAL_ROWS);
+    set_hardware_cursor(1, 0, 0);
+
+    // 16-bit word representing space with black background and white foreground
+    uint16_t three = '3' | (TERMINAL_FOREGROUND_COLOR | TERMINAL_BACKGROUND_COLOR);
+
+    // Overwrite every byte in video memory with this and reset cursor to (0, 0)
+    memset_word((uint16_t*) output_buffer[2], three, TERMINAL_COLUMNS * TERMINAL_ROWS);
+    set_hardware_cursor(2, 0, 0);
+
 
     single_terminal = 0;
     enable_irq(KEYBOARD_IRQ);

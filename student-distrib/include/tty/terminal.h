@@ -29,6 +29,7 @@
 #define KEYBOARD_LEFT_SHIFT 0x2A
 #define KEYBOARD_RIGHT_SHIFT 0x36
 #define KEYBOARD_CAPS_LOCK 0x3A
+#define KEYBOARD_F1 0x3B
 
 #define VIDEO_VIRT_ADDR 0x8400000
 #define VIDEO_PHYS_ADDR 0xB8000
@@ -41,6 +42,8 @@ extern void keyboard_handler_wrapper(void);
 
 void reset_terminal(uint8_t terminal_num);
 void multiple_terminal_init();
+
+uint16_t *get_terminal_output_buffer(uint8_t terminal_num);
 
 void clear_terminal(uint8_t terminal_num);
 void putc(uint8_t c);

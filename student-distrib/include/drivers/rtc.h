@@ -15,12 +15,12 @@
 #define RTC_REG_B 0xB
 #define RTC_REG_C 0xC
 
+#define MIN_FREQ    2
+#define MAX_FREQ 1024
+
 void set_rtc_test_enabled(int enabled);
 void rtc_handler();
 extern void rtc_handler_wrapper(void);
-
-#define MIN_FREQ    2
-#define MAX_FREQ 1024
 
 int32_t rtc_open(file_t *f, const int8_t * filename);
 int32_t rtc_close(file_t *f);

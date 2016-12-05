@@ -226,7 +226,7 @@ int32_t syscall_execute(const int8_t *command) {
 
     // Set up paging for the new child process
     // FIXME: multiple terminals
-    void *vmem_ptr = 0xB8000;
+    void *vmem_ptr = get_terminal_output_buffer(parent_pcb->terminal_num);
     child_pcb->process_pd_ptr = setup_process_paging(get_process_page_from_slot(child_pcb->slot_num), child_pcb->slot_num, vmem_ptr);
     enable_paging(child_pcb->process_pd_ptr);
 
@@ -246,7 +246,7 @@ int32_t syscall_execute(const int8_t *command) {
         "mov %%ebp, %1\r\n"
         : "=g"(parent_pcb->regs.esp), "=g"(parent_pcb->regs.ebp)
         :
-        : "memory"
+        : "memory", "eax"
     );
 
     // Switch to user mode

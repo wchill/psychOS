@@ -209,6 +209,16 @@ pd_entry *setup_process_paging(void *process_addr, uint32_t slot_num, void *vmem
     return local_pd;
 }
 
+void flush_tlb() {
+    asm volatile(
+        "mov %%cr3, %%eax\r\n"
+        "mov %%eax, %%cr3\r\n"
+        :
+        :
+        : "memory"
+    );
+}
+
 void set_process_vmem_page(uint32_t slot_num, void *vmem_addr) {
     pt_entry *local_pt = get_process_pt(slot_num);
     local_pt[0].physical_addr_31_to_12 = (uint32_t) vmem_addr >> ADDRESS_SHIFT;

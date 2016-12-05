@@ -155,8 +155,7 @@ void kernel_run_first_program(const int8_t* command) {
         child_pcb->entrypoint = entrypoint;
 
         // Process paging
-        // FIXME: multiple terminals
-        void *vmem_ptr = 0xB8000;
+        void *vmem_ptr = get_terminal_output_buffer(i);
         child_pcb->process_pd_ptr = setup_process_paging(get_process_page_from_slot(child_pcb->slot_num), child_pcb->slot_num, vmem_ptr);
 
         // Set up this process's PCB
