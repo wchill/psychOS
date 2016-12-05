@@ -152,7 +152,7 @@ void initialize_paging_structs(pd_entry *local_pd_ptr, pt_entry *local_pt_ptr, v
             pt_entry my_entry;
 
             my_entry.physical_addr_31_to_12 = (uint32_t) vmem_addr >> ADDRESS_SHIFT;
-            my_entry.global                 = 1;
+            my_entry.global                 = 0;
             my_entry.page_size_ignored      = 0;
             my_entry.dirty                  = 0;
             my_entry.accessed               = 0;

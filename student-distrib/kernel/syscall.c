@@ -50,9 +50,10 @@ int32_t syscall_open(const uint8_t *filename) {
     pcb_t *PCB = get_current_pcb();
 
     // find the lowest index in the file array that is free
-    int32_t fd = -1, idx;
+    int32_t fd = -1;
+    int32_t idx;
     for(idx = 0 ; idx < MAX_FILE_DESCRIPTORS ; idx++) {
-        if(PCB->fa[idx].flags == 0) {
+        if(!(PCB->fa[idx].flags & FILE_IN_USE)) {
             fd = idx;
             break;
         }
@@ -220,6 +221,13 @@ int32_t syscall_execute(const int8_t *command) {
     // Load executable and check validity
     uint32_t entrypoint = load_program_into_slot(child_pcb->program_name, child_pcb->slot_num);
     if(entrypoint == NULL) return -1;
+    child_pcb->entrypoint = entrypoint;
+
+    // Set up paging for the new child process
+    // FIXME: multiple terminals
+    void *vmem_ptr = 0xB8000;
+    child_pcb->process_pd_ptr = setup_process_paging(get_process_page_from_slot(child_pcb->slot_num), child_pcb->slot_num, vmem_ptr);
+    enable_paging(child_pcb->process_pd_ptr);
 
     // Set up the child process's PCB
     child_pcb->parent = parent_pcb;
@@ -229,12 +237,6 @@ int32_t syscall_execute(const int8_t *command) {
     child_pcb->pid = get_next_pid();
     child_pcb->terminal_num = parent_pcb->terminal_num;
     open_stdin_and_stdout(child_pcb);
-
-    // Set up paging for the new child process
-    // FIXME: multiple terminals
-    void *vmem_ptr = 0xB8000;
-    child_pcb->process_pd_ptr = setup_process_paging(get_process_page_from_slot(child_pcb->slot_num), child_pcb->slot_num, vmem_ptr);
-    enable_paging(child_pcb->process_pd_ptr);
 
     // Prepare for context switch: set the new kernel stack in the TSS and save esp/ebp registers
     set_kernel_stack(get_kernel_stack_base_from_slot(child_pcb->slot_num));
@@ -247,7 +249,7 @@ int32_t syscall_execute(const int8_t *command) {
     );
 
     // Switch to user mode
-    switch_to_ring_3(PROCESS_LINK_START, entrypoint);
+    switch_to_ring_3(PROCESS_LINK_START, child_pcb->entrypoint);
 
     // We'll never come back here (read syscall_halt comments for complete reason)
     return -1;

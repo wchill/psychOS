@@ -142,35 +142,41 @@ void kernel_run_first_program(const int8_t* command) {
         current_pcb->slot_num = i;
     }
 
-    // TODO: change for 3.5
-    pcb_t *child_pcb = get_pcb_from_slot(0);
+    for(i = 0; i < NUM_TERMINALS; i++) {
+        pcb_t *child_pcb = get_pcb_from_slot(i);
 
-    // Process paging
-    // FIXME: multiple terminals
-    void *vmem_ptr = 0xB8000;
-    child_pcb->process_pd_ptr = setup_process_paging(get_process_page_from_slot(child_pcb->slot_num), child_pcb->slot_num, vmem_ptr);
-    enable_paging(child_pcb->process_pd_ptr);
+        // Save program name and args in the child process's PCB
+        parse_command(command, child_pcb->program_name, child_pcb->args);
 
-    // Initialize terminal for programs to use
-    terminal_open(&child_pcb->fa[0], "stdin");
+        // Load program and determine entrypoint
+        uint32_t entrypoint = load_program_into_slot(child_pcb->program_name, child_pcb->slot_num);
+        if(entrypoint == NULL) return;
+        child_pcb->entrypoint = entrypoint;
 
-    // Set up this process's PCB
-    child_pcb->parent = NULL;
-    child_pcb->child = NULL;
-    child_pcb->in_use = 1;
-    child_pcb->pid = get_next_pid();
-    open_stdin_and_stdout(child_pcb);
-    parse_command(command, child_pcb->program_name, child_pcb->args);
+        // Process paging
+        // FIXME: multiple terminals
+        void *vmem_ptr = 0xB8000;
+        child_pcb->process_pd_ptr = setup_process_paging(get_process_page_from_slot(child_pcb->slot_num), child_pcb->slot_num, vmem_ptr);
+        enable_paging(child_pcb->process_pd_ptr);
 
-    // Load program and determine entrypoint
-    uint32_t entrypoint = load_program_into_slot(child_pcb->program_name, child_pcb->slot_num);
-    if(entrypoint == NULL) return;
+        // Initialize terminal for programs to use
+        terminal_open(&child_pcb->fa[0], "stdin");
+
+        // Set up this process's PCB
+        child_pcb->parent = NULL;
+        child_pcb->child = NULL;
+        child_pcb->in_use = 1;
+        child_pcb->pid = get_next_pid();
+        child_pcb->terminal_num = i;
+        open_stdin_and_stdout(child_pcb);
+    }
+    pcb_t *first_pcb = get_pcb_from_slot(0);
 
     // Prepare for context switch
-    set_kernel_stack(get_kernel_stack_base_from_slot(child_pcb->slot_num));
+    set_kernel_stack(get_kernel_stack_base_from_slot(first_pcb->slot_num));
 
     // Start the program
-    switch_to_ring_3(PROCESS_LINK_START, entrypoint);
+    switch_to_ring_3(PROCESS_LINK_START, first_pcb->entrypoint);
 }
 
 /**
