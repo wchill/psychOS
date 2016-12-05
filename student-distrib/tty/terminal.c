@@ -66,7 +66,7 @@ static void set_hardware_cursor(uint8_t terminal_num, uint8_t x, uint8_t y) {
 }
 
 void switch_active_terminal(uint8_t new_terminal) {
-    if(new_terminal >= 0 && new_terminal < NUM_TERMINALS) {
+    if(new_terminal < NUM_TERMINALS) {
         uint32_t flags;
         cli_and_save(flags);
 

@@ -40,6 +40,7 @@
 void keyboard_handler();
 extern void keyboard_handler_wrapper(void);
 
+void switch_active_terminal(uint8_t new_terminal);
 void reset_terminal(uint8_t terminal_num);
 void multiple_terminal_init();
 

@@ -5,9 +5,6 @@
 #include <arch/x86/io.h>
 #include <tty/terminal.h>
 
-//static uint32_t ms_per_tick = 1;
-//static uint32_t fractional_ms_per_tick = 0;
-
 static volatile uint32_t system_ticks = 0;
 
 static void context_switch(pcb_t *last_pcb, pcb_t *pcb) {
@@ -64,7 +61,7 @@ void scheduler() {
 }
 
 void pit_init(uint32_t hertz) {
-	// TODO: Code to properly set freq
+	// 100 Hz = 10ms per tick/context switch
 	hertz = 100;
 
 	uint16_t divisor = PIT_FREQUENCY / hertz;
