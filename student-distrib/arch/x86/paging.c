@@ -215,13 +215,15 @@ void flush_tlb() {
         "mov %%eax, %%cr3\r\n"
         :
         :
-        : "memory"
+        : "memory", "eax"
     );
 }
 
 void set_process_vmem_page(uint32_t slot_num, void *vmem_addr) {
     pt_entry *local_pt = get_process_pt(slot_num);
     local_pt[0].physical_addr_31_to_12 = (uint32_t) vmem_addr >> ADDRESS_SHIFT;
+    local_pt[0].present = 1;
+    flush_tlb();
 }
 
 void *get_process_vmem_page(uint32_t process_slot) {

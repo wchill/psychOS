@@ -46,6 +46,7 @@ void multiple_terminal_init();
 uint16_t *get_terminal_output_buffer(uint8_t terminal_num);
 
 void clear_terminal(uint8_t terminal_num);
+void putc_internal(uint8_t terminal_num, uint8_t ch);
 void putc(uint8_t c);
 
 int32_t terminal_open(file_t *f, const int8_t *filename);

@@ -225,9 +225,9 @@ int32_t syscall_execute(const int8_t *command) {
     child_pcb->entrypoint = entrypoint;
 
     // Set up paging for the new child process
-    // FIXME: multiple terminals
     void *vmem_ptr = get_terminal_output_buffer(parent_pcb->terminal_num);
     child_pcb->process_pd_ptr = setup_process_paging(get_process_page_from_slot(child_pcb->slot_num), child_pcb->slot_num, vmem_ptr);
+    set_process_vmem_page(child_pcb->slot_num, vmem_ptr);
     enable_paging(child_pcb->process_pd_ptr);
 
     // Set up the child process's PCB
@@ -237,6 +237,8 @@ int32_t syscall_execute(const int8_t *command) {
     child_pcb->in_use = 1;
     child_pcb->pid = get_next_pid();
     child_pcb->terminal_num = parent_pcb->terminal_num;
+    child_pcb->status = PROCESS_RUNNING;
+    parent_pcb->status = PROCESS_BLOCKED;
     open_stdin_and_stdout(child_pcb);
 
     // Prepare for context switch: set the new kernel stack in the TSS and save esp/ebp registers
@@ -251,8 +253,6 @@ int32_t syscall_execute(const int8_t *command) {
 
     // Switch to user mode
     switch_to_ring_3(PROCESS_LINK_START, child_pcb->entrypoint);
-
-    asm volatile("execute_lbl:");
 
     // We'll never come back here (read syscall_halt comments for complete reason)
     return -1;
@@ -289,6 +289,7 @@ int32_t syscall_halt(uint32_t status) {
         child_pcb->child = NULL;
         child_pcb->in_use = 1;
         child_pcb->pid = get_next_pid();
+        child_pcb->status = PROCESS_RUNNING;
         open_stdin_and_stdout(child_pcb);
 
         // Prepare for context switch
@@ -297,6 +298,9 @@ int32_t syscall_halt(uint32_t status) {
         // Start the program
         switch_to_ring_3(PROCESS_LINK_START, child_pcb->entrypoint);
     }
+
+    child_pcb->status = PROCESS_NONE;
+    parent_pcb->status = PROCESS_RUNNING;
 
     // Change the page table and TSS esp0/kernel stack to that of the parent process
     enable_paging(parent_pcb->process_pd_ptr);

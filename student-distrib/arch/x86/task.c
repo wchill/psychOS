@@ -4,6 +4,8 @@
 #include <fs/fs.h>
 #include <lib/file.h>
 #include <tty/terminal.h>
+#include <drivers/pit.h>
+#include <arch/x86/i8259.h>
 
 inline uint32_t get_next_pid() {
     static uint32_t next_pid = 0;
@@ -134,12 +136,15 @@ void open_stdin_and_stdout(pcb_t *pcb) {
  * @param command   Pointer to a string containing the name of a command (and arguments, space separated, if desired)
  */
 void kernel_run_first_program(const int8_t* command) {
+    cli();
+
     // Clear kernel PCBs
     int i;
     for(i = 0; i < MAX_PROCESSES; i++) {
         pcb_t *current_pcb = get_pcb_from_slot(i);
         current_pcb->in_use = 0;
         current_pcb->slot_num = i;
+        current_pcb->status = PROCESS_NONE;
     }
     multiple_terminal_init();
 
@@ -163,6 +168,8 @@ void kernel_run_first_program(const int8_t* command) {
         child_pcb->child = NULL;
         child_pcb->in_use = 1;
         child_pcb->pid = get_next_pid();
+        child_pcb->status = PROCESS_RUNNING;
+        child_pcb->terminal_num = i;
         open_stdin_and_stdout(child_pcb);
     }
     pcb_t *child_pcb = get_pcb_from_slot(0);
@@ -170,6 +177,9 @@ void kernel_run_first_program(const int8_t* command) {
 
     // Prepare for context switch
     set_kernel_stack(get_kernel_stack_base_from_slot(child_pcb->slot_num));
+
+    // Enable scheduling/sleep
+    enable_irq(PIT_IRQ);
 
     // Start the program
     switch_to_ring_3(PROCESS_LINK_START, child_pcb->entrypoint);

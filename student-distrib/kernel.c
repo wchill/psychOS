@@ -15,6 +15,7 @@
 #include <drivers/rtc.h>
 #include <kernel/tests.h> // added for 3.2
 #include <arch/x86/task.h>
+#include <drivers/pit.h>
 
 /* Macros. */
 /* Check if the bit BIT in FLAGS is set. */
@@ -25,7 +26,7 @@
 #define KEYBOARD_SIZE 128
 
 static pd_entry kernel_pd[NUM_PD_ENTRIES] __attribute__((aligned (FOUR_KB_ALIGNED)));
-static pt_entry kernel_pt[NUM_PD_ENTRIES] __attribute__((aligned (FOUR_KB_ALIGNED)));
+static pt_entry kernel_pt[NUM_PT_ENTRIES] __attribute__((aligned (FOUR_KB_ALIGNED)));
 
 /* Check if MAGIC is valid and print the Multiboot information structure
    pointed by ADDR. */
@@ -165,7 +166,7 @@ entry (unsigned long magic, unsigned long addr)
         void (*handlers[NUM_RESERVED_VEC]) (void); //array of function pointers. These functions take no parameters and return nothing.
         int i;
 
-        for(i = 0; i < NUM_VEC; i++) {
+        for(i = NUM_RESERVED_VEC; i < NUM_VEC; i++) {
             install_interrupt_handler(i, null_interrupt_handler, KERNEL_CS, PRIVILEGE_KERNEL);
         }
 
@@ -213,6 +214,7 @@ entry (unsigned long magic, unsigned long addr)
         // Install device handlers
         install_interrupt_handler(IRQ_INT_NUM(KEYBOARD_IRQ), keyboard_handler_wrapper, KERNEL_CS, PRIVILEGE_KERNEL);
         install_interrupt_handler(IRQ_INT_NUM(RTC_IRQ), rtc_handler_wrapper, KERNEL_CS, PRIVILEGE_KERNEL);
+        install_interrupt_handler(IRQ_INT_NUM(PIT_IRQ), pit_handler_wrapper, KERNEL_CS, PRIVILEGE_KERNEL);
     }
 
     printf("Initializing the PIC\n");

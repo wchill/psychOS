@@ -23,24 +23,50 @@
 #define PROCESS_VIRT_PAGE_START 0x8000000
 #define PROCESS_LINK_START (PROCESS_VIRT_PAGE_START + PROCESS_LINK_OFFSET)
 
+#define PROCESS_NONE 0
+#define PROCESS_RUNNING 1
+#define PROCESS_BLOCKED 2
+
 typedef struct pcb_t pcb_t;
 
 struct pcb_t {
+	// Linked list of processes
+	pcb_t *parent;
+	pcb_t *child;
+
+	// Paging directory pointer
 	pd_entry *process_pd_ptr;
+
+	// Registers saved for context switching
 	struct {
 		uint32_t esp;
 		uint32_t ebp;
 	} regs;
+
+	struct {
+		uint32_t ss;
+		uint32_t esp;
+		uint32_t eflags;
+		uint32_t cs;
+		uint32_t eip;
+	} iret;
+
+	// File descriptors
 	file_t fa[MAX_FILE_DESCRIPTORS];
+
+	// Program name and arguments
 	int8_t program_name[MAX_PROGRAM_NAME_LENGTH];
 	int8_t args[MAX_ARGS_LENGTH];
+
+	// Bookkeeping information
+	uint32_t entrypoint;
 	uint32_t slot_num;
 	uint32_t pid;
-	uint32_t entrypoint;
-	pcb_t *parent;
-	pcb_t *child;
 	uint8_t in_use;
 	uint8_t terminal_num;
+
+	// Current process state
+	uint32_t status;
 };
 
 typedef struct task_kernel_stack_t {

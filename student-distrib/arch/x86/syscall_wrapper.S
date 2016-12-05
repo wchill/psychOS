@@ -24,6 +24,7 @@ syscall_jump_table:
 syscall_handler_wrapper:
 	# On the stack when this is called:
 	# ss, esp0, eflags, cs, eip
+	cli
 
 	# Check if syscall number is valid (1-10)
 	cmpl $SYSCALL_MIN_NUM, %eax

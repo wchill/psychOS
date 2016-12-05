@@ -21,7 +21,7 @@ static volatile uint16_t output_buffer[NUM_TERMINALS][FOUR_KB_ALIGNED];
 static volatile uint8_t cursor_location[NUM_TERMINALS][2];
 
 static volatile uint8_t active_terminal = 0;
-static volatile uint16_t *video_memory = (volatile uint16_t*) VIDEO_VIRT_ADDR;
+static volatile uint16_t *video_memory[NUM_TERMINALS] = {(volatile uint16_t*) VIDEO_VIRT_ADDR};
 
 static volatile uint8_t single_terminal = 1;
  
@@ -38,13 +38,6 @@ inline uint16_t *get_terminal_output_buffer(uint8_t terminal_num) {
         return (uint16_t*) VIDEO_PHYS_ADDR;
     } else {
         return (uint16_t*) output_buffer[terminal_num];
-    }
-}
-
-// Warning: Disable interrupts while running this!
-void switch_active_terminal(uint8_t new_terminal) {
-    if(new_terminal >= 0 && new_terminal < NUM_TERMINALS) {
-        active_terminal = new_terminal;
     }
 }
 
@@ -72,6 +65,30 @@ static void set_hardware_cursor(uint8_t terminal_num, uint8_t x, uint8_t y) {
     }
 }
 
+void switch_active_terminal(uint8_t new_terminal) {
+    if(new_terminal >= 0 && new_terminal < NUM_TERMINALS) {
+        uint32_t flags;
+        cli_and_save(flags);
+
+        memcpy((void*) output_buffer[active_terminal], (void*) VIDEO_PHYS_ADDR, 4000);
+
+        uint8_t old_terminal = active_terminal;
+        active_terminal = new_terminal;
+        //pcb_t *pcb = get_current_pcb();
+        //set_process_vmem_page(pcb->slot_num, get_terminal_output_buffer(pcb->terminal_num));
+        video_memory[old_terminal] = get_terminal_output_buffer(old_terminal);
+        video_memory[new_terminal] = get_terminal_output_buffer(new_terminal);
+
+        flush_tlb();
+
+        memcpy((void*) VIDEO_PHYS_ADDR, (void*) output_buffer[active_terminal], 4000);
+        set_hardware_cursor(active_terminal, cursor_location[active_terminal][0], cursor_location[active_terminal][1]);
+
+        restore_flags(flags);
+
+    }
+}
+
 /*
  * video_buffer_putc
  * Places the given character at (x, y) in video memory.
@@ -80,23 +97,23 @@ static void set_hardware_cursor(uint8_t terminal_num, uint8_t x, uint8_t y) {
  * @param y   (0-indexed) y coordinate for cursor
  * @param ch  the character to place in video memory
  */
-static inline void video_buffer_putc(uint8_t x, uint8_t y, uint8_t ch) {
+static inline void video_buffer_putc(uint8_t terminal_num, uint8_t x, uint8_t y, uint8_t ch) {
     uint16_t word = ch | (TERMINAL_FOREGROUND_COLOR | TERMINAL_BACKGROUND_COLOR); // Bits 0-7 are charcter. Bits 8-15 are color
     uint16_t index = VIDEO_INDEX(x, y);
-    video_memory[index] = word;
+    video_memory[terminal_num][index] = word;
 }
 
 /*
  * scroll_screen
  * Scrolls the screen vertically one row up.
  */
-static void scroll_screen() {
+static void scroll_screen(uint8_t terminal_num) {
     // Move the last 3840 bytes (79 rows) forward 160 bytes (1 row), overwriting the first row
-    memmove((uint16_t*) &video_memory[VIDEO_INDEX(0, 0)], (uint16_t*) &video_memory[VIDEO_INDEX(0, 1)], TERMINAL_COLUMNS * (TERMINAL_ROWS - 1) * 2); // 2 is to double the value
+    memmove((uint16_t*) &video_memory[terminal_num][VIDEO_INDEX(0, 0)], (uint16_t*) &video_memory[terminal_num][VIDEO_INDEX(0, 1)], TERMINAL_COLUMNS * (TERMINAL_ROWS - 1) * 2); // 2 is to double the value
 
     // Set the last row to be blank
     uint16_t blank_word = ' ' | (TERMINAL_FOREGROUND_COLOR | TERMINAL_BACKGROUND_COLOR);
-    memset_word((uint16_t*) &video_memory[VIDEO_INDEX(0, TERMINAL_ROWS - 1)], blank_word, TERMINAL_COLUMNS);
+    memset_word((uint16_t*) &video_memory[terminal_num][VIDEO_INDEX(0, TERMINAL_ROWS - 1)], blank_word, TERMINAL_COLUMNS);
 }
 
 /*
@@ -126,16 +143,16 @@ static uint8_t keyboard_putc(uint8_t terminal_num, uint8_t ch) {
             uint8_t pos = cursor_location[terminal_num][0] - (cursor_location[terminal_num][0] & 4);
             switch(pos) {
                 case 0:
-                    putc('\b');
+                    putc_internal(terminal_num, '\b');
                 case 3:
-                    putc('\b');
+                    putc_internal(terminal_num, '\b');
                 case 2:
-                    putc('\b');
+                    putc_internal(terminal_num, '\b');
                 case 1:
-                    putc('\b');
+                    putc_internal(terminal_num, '\b');
             }
         } else {
-            putc('\b');
+            putc_internal(terminal_num, '\b');
         }
     } else if(ch == '\n') {
     // New line
@@ -146,7 +163,7 @@ static uint8_t keyboard_putc(uint8_t terminal_num, uint8_t ch) {
         // Add new line to buffer
         circular_buffer_put_byte((circular_buffer_t*) &input_buffer[terminal_num], ch);
 
-        putc('\n');
+        putc_internal(terminal_num, '\n');
 
         // We read a new line
         new_line_ready[terminal_num]++;
@@ -158,22 +175,20 @@ static uint8_t keyboard_putc(uint8_t terminal_num, uint8_t ch) {
             // Add to buffer
             circular_buffer_put_byte((circular_buffer_t*) &input_buffer[terminal_num], ch);
 
-            putc(ch);
+            uint8_t pos = cursor_location[terminal_num][0] & 4;
+            switch(pos) {
+                case 0:
+                    putc_internal(terminal_num, ' ');
+                case 1:
+                    putc_internal(terminal_num, ' ');
+                case 2:
+                    putc_internal(terminal_num, ' ');
+                case 3:
+                    putc_internal(terminal_num, ' ');
+            }
         } else {
             // No space in buffer, ignore key
             return 0;
-        }
-
-        uint8_t pos = cursor_location[terminal_num][0] & 4;
-        switch(pos) {
-            case 0:
-                putc(' ');
-            case 1:
-                putc(' ');
-            case 2:
-                putc(' ');
-            case 3:
-                putc(' ');
         }
     } else if(ch > 0) {
     // All other characters considered printable
@@ -184,7 +199,7 @@ static uint8_t keyboard_putc(uint8_t terminal_num, uint8_t ch) {
             // Add to buffer
             circular_buffer_put_byte((circular_buffer_t*) &input_buffer[terminal_num], ch);
 
-            putc(ch);
+            putc_internal(terminal_num, ch);
         } else {
             // No space in buffer, ignore key
             return 0;
@@ -199,8 +214,7 @@ static uint8_t keyboard_putc(uint8_t terminal_num, uint8_t ch) {
  * 
  * @param ch  The character to output to the screen
  */
-void putc(uint8_t ch) {
-    uint8_t terminal_num = get_process_terminal();
+void putc_internal(uint8_t terminal_num, uint8_t ch) {
 
     uint8_t cursor_x = cursor_location[terminal_num][0];
     uint8_t cursor_y = cursor_location[terminal_num][1];
@@ -214,21 +228,21 @@ void putc(uint8_t ch) {
         cursor_x--;
 
         // Blank out the character at the cursor's new position
-        video_buffer_putc(cursor_x, cursor_y, ' ');
+        video_buffer_putc(terminal_num, cursor_x, cursor_y, ' ');
     } else if (ch == '\n') {
         // Update cursor position
         cursor_y++;
         cursor_x = 0;
         if(cursor_y >= TERMINAL_ROWS) {
             // If cursor has reached the bottom, scroll the screen
-            scroll_screen();
+            scroll_screen(terminal_num);
             cursor_y = TERMINAL_ROWS - 1;
         }
     } else if (ch == '\t') {
         // Unimplemented
     } else {
         // Echo to screen at cursor's current position
-        video_buffer_putc(cursor_x, cursor_y, ch);
+        video_buffer_putc(terminal_num, cursor_x, cursor_y, ch);
 
         // Update cursor
         if(++cursor_x >= TERMINAL_COLUMNS) {
@@ -236,12 +250,16 @@ void putc(uint8_t ch) {
             cursor_x = 0;
 
             if(cursor_y >= TERMINAL_ROWS) {
-                scroll_screen();
+                scroll_screen(terminal_num);
                 cursor_y = TERMINAL_ROWS - 1;
             }
         }
     }
     set_hardware_cursor(terminal_num, cursor_x, cursor_y);
+}
+
+void putc(uint8_t ch) {
+    putc_internal(0, ch);
 }
 
 /*
@@ -254,7 +272,7 @@ void clear_terminal(uint8_t terminal_num) {
     uint16_t blank_word = ' ' | (TERMINAL_FOREGROUND_COLOR | TERMINAL_BACKGROUND_COLOR);
 
     // Overwrite every byte in video memory with this and reset cursor to (0, 0)
-    memset_word((uint16_t*) video_memory, blank_word, TERMINAL_COLUMNS * TERMINAL_ROWS);
+    memset_word((uint16_t*) video_memory[terminal_num], blank_word, TERMINAL_COLUMNS * TERMINAL_ROWS);
     set_hardware_cursor(terminal_num, 0, 0);
 }
 
@@ -263,6 +281,9 @@ void clear_terminal(uint8_t terminal_num) {
  * runs when keyboard Interrupt happens. Outputs keys pressed. Can also run tests (Ctrl+1 to Ctrl+5)
  */
 void keyboard_handler() {
+    uint32_t flags;
+    cli_and_save(flags);
+
     uint8_t terminal_num = active_terminal;
     uint8_t status;
     do {
@@ -303,18 +324,7 @@ void keyboard_handler() {
                 }
 
                 if (alt_pressed && keycode >= KEYBOARD_F1 && keycode < KEYBOARD_F1 + NUM_TERMINALS) {
-                    uint32_t flags;
-                    cli_and_save(flags);
-
-                    memcpy((void*) output_buffer[active_terminal], (void*) VIDEO_PHYS_ADDR, 4000);
-
                     switch_active_terminal(keycode - KEYBOARD_F1);
-                    pcb_t *pcb = get_current_pcb();
-                    set_process_vmem_page(pcb->slot_num, get_terminal_output_buffer(active_terminal));
-
-                    memcpy((void*) VIDEO_PHYS_ADDR, (void*) output_buffer[active_terminal], 4000);
-
-                    restore_flags(flags);
                 }
 
                 // Ctrl+L should clear the screen and place cursor at the top, but not clear the buffer
@@ -326,7 +336,7 @@ void keyboard_handler() {
                     clear_terminal(terminal_num);
 
                     for(i = 0; i < len; i++) {
-                        putc(current_buf[i]);
+                        putc_internal(terminal_num, current_buf[i]);
                     }
                 }
 
@@ -345,6 +355,7 @@ void keyboard_handler() {
     
     // Acknowledge interrupt
     send_eoi(KEYBOARD_IRQ);
+    restore_flags(flags);
 }
 
 void reset_terminal(uint8_t terminal_num) {
@@ -365,23 +376,9 @@ void multiple_terminal_init() {
 
     int i;
     for(i = 0; i < NUM_TERMINALS; i++) {
+        video_memory[i] = get_terminal_output_buffer(i);
         reset_terminal(i);
     }
-
-    // 16-bit word representing space with black background and white foreground
-    uint16_t two = '2' | (TERMINAL_FOREGROUND_COLOR | TERMINAL_BACKGROUND_COLOR);
-
-    // Overwrite every byte in video memory with this and reset cursor to (0, 0)
-    memset_word((uint16_t*) output_buffer[1], two, TERMINAL_COLUMNS * TERMINAL_ROWS);
-    set_hardware_cursor(1, 0, 0);
-
-    // 16-bit word representing space with black background and white foreground
-    uint16_t three = '3' | (TERMINAL_FOREGROUND_COLOR | TERMINAL_BACKGROUND_COLOR);
-
-    // Overwrite every byte in video memory with this and reset cursor to (0, 0)
-    memset_word((uint16_t*) output_buffer[2], three, TERMINAL_COLUMNS * TERMINAL_ROWS);
-    set_hardware_cursor(2, 0, 0);
-
 
     single_terminal = 0;
     enable_irq(KEYBOARD_IRQ);
@@ -496,9 +493,11 @@ int32_t terminal_write(file_t *f, const void *buf, int32_t nbytes) {
     uint32_t flags;
     cli_and_save(flags);
 
+    pcb_t *pcb = get_current_pcb();
+
     // Write characters to screen
     for(i = 0; i < nbytes; i++) {
-        putc(((uint8_t*)buf)[i]);
+        putc_internal(pcb->terminal_num, ((uint8_t*)buf)[i]);
     }
 
     restore_flags(flags);
