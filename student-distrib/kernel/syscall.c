@@ -254,7 +254,7 @@ int32_t syscall_execute(const int8_t *command) {
     // Switch to user mode
     switch_to_ring_3(PROCESS_LINK_START, child_pcb->entrypoint);
 
-    // We'll never come back here (read syscall_halt comments for complete reason)
+    // We'll never come back here (read halt_program comments for complete reason)
     return -1;
 }
 
@@ -262,88 +262,12 @@ int32_t syscall_execute(const int8_t *command) {
  * syscall_halt
  * Exits the current program and returns to the parent program.
  * 
- * @param status    The program's exit code
+ * @param status    The program's exit code (1 byte in size)
  *
  * @return          Does not return (jumps back to parent program)
  */
 int32_t syscall_halt(uint32_t status) {
-    pcb_t *child_pcb = get_current_pcb();
-
-    // Mark the process's PCB as unused
-    child_pcb->in_use = 0;
-
-    // Close all file descriptors
-    int i;
-    for(i = 0; i < MAX_FILE_DESCRIPTORS; i++) {
-        syscall_close(i);
-    }
-
-    pcb_t *parent_pcb = child_pcb->parent;
-
-    // If this process does not have a parent, then it should be restarted
-    if(parent_pcb == NULL) { 
-        reset_terminal(child_pcb->terminal_num);
-
-        // Set up this process's PCB
-        child_pcb->parent = NULL;
-        child_pcb->child = NULL;
-        child_pcb->in_use = 1;
-        child_pcb->pid = get_next_pid();
-        child_pcb->status = PROCESS_RUNNING;
-        open_stdin_and_stdout(child_pcb);
-
-        // Prepare for context switch
-        set_kernel_stack(get_kernel_stack_base_from_slot(child_pcb->slot_num));
-
-        // Start the program
-        switch_to_ring_3(PROCESS_LINK_START, child_pcb->entrypoint);
-    }
-
-    child_pcb->status = PROCESS_NONE;
-    parent_pcb->status = PROCESS_RUNNING;
-
-    // Change the page table and TSS esp0/kernel stack to that of the parent process
-    enable_paging(parent_pcb->process_pd_ptr);
-    set_kernel_stack(get_kernel_stack_base_from_slot(parent_pcb->slot_num));
-
-    /*
-    A little bit of ASM hackery here.
-    We have to do several things:
-    - Restore the parent process's esp and ebp
-    - Somehow jump to where the parent process left off
-    - Turn the status exit code into a 32 bit number and return it
-
-    Because we're using inline assembly, it's not a one-to-one translation to what
-    actually gets output. Loading something as a parameter into inline assembly is
-    complicated, and what makes things more annoying is parameters are based off of
-    their offset from ebp. So we have to make sure we take care of the exit code before
-    we restore ebp, otherwise we'll have garbage (hence why we do "mov status, %eax" first).
-    Also things may get loaded into intermediate registers; hence we push/pop the exit code
-    into eax.
-
-    When we restore esp and ebp for the parent process's kernel stack, the leave instruction
-    sets esp back to ebp, then pops the previous ebp from the stack. What's now on top of the
-    stack is the parent process's return address from the execute syscall. So in effect,
-    setting eax, restoring the registers and doing a leave/ret is essentially just returning
-    from the execute function without actually going back there.
-
-    Then we go back into the system call interrupt handler which restores the rest of the
-    registers for us (save eax because that holds the return value from the system call).
-    */
-    asm volatile(
-        "mov %0, %%esp\r\n"
-        "push %2\r\n"
-        "mov %1, %%ebp\r\n"
-        "pop %%eax\r\n"
-        "leave\r\n"
-        "ret\r\n"
-        :
-        : "r"(parent_pcb->regs.esp), "r"(parent_pcb->regs.ebp), "r"(status & 0xFF)
-        : "memory", "cc"
-    );
-
-    // We never reach this point; this is just to shut gcc up
-    return -1;
+    return halt_program(status & 0xFF);
 }
 
 /**

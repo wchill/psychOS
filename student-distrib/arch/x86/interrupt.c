@@ -2,6 +2,7 @@
 #include <lib/lib.h>
 #include <tty/terminal.h>
 #include <arch/x86/x86_desc.h>
+#include <arch/x86/task.h>
 
 // Human-readable errors for the 32 possible Exceptions (Entries 0-31 in IDT table)
 static const char *human_readable_errors[] = {
@@ -115,8 +116,11 @@ void exception_handler(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
     uint32_t int_num, uint32_t error,
     uint32_t eip, uint32_t cs, uint32_t eflags) {
 
-    //pcb_t *pcb = get_current_pcb()->parent;
-
+    pcb_t *child_pcb = get_current_pcb();
+    pcb_t *parent_pcb = child_pcb->parent;
+    if(parent_pcb != NULL) {
+        halt_program(256);
+    }
 
     clear_terminal(0);
     switch_active_terminal(0);

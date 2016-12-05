@@ -85,6 +85,8 @@ uint32_t get_next_pid();
 void open_stdin_and_stdout();
 void kernel_run_first_program(const int8_t* command);
 
+int32_t halt_program(int32_t status);
+
 void set_kernel_stack(const void *stack);
 uint32_t get_executable_entrypoint(const void *executable);
 pcb_t *get_pcb_from_esp(void *process_esp);
