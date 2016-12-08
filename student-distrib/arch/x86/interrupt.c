@@ -143,7 +143,7 @@ void exception_handler(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
                     : 
                     : "memory"
                 );
-                printf("An attempt was made to access the following virtual address: 0x%#x\n\n", virtual_addr);
+                printf(" An attempt was made to access the following virtual address: 0x%#x\n\n", virtual_addr);
             }
             break;
         default:

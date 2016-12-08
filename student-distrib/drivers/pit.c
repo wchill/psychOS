@@ -41,7 +41,6 @@ static void context_switch(pcb_t *last_pcb, pcb_t *pcb) {
 	asm volatile(
 		"mov %0, %%esp\r\n"
 		"mov %1, %%ebp\r\n"
-		"ret\r\n"
 		:
 		: "r"(pcb->regs.esp), "r"(pcb->regs.ebp)
 		: "memory"

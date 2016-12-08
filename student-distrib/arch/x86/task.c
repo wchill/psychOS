@@ -180,6 +180,7 @@ void kernel_run_first_program(const int8_t* command) {
     set_kernel_stack(get_kernel_stack_base_from_slot(child_pcb->slot_num));
 
     // Enable scheduling/sleep
+    pit_init(100);
     enable_irq(PIT_IRQ);
 
     // Start the program
